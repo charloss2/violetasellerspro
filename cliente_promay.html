@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Violetta — Tu Pedido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --violet: #7C3AED;
+      --violet2: #5B21B6;
+      --pink:   #EC4899;
+      --green:  #059669;
+      --green-lt:#ECFDF5;
+      --bg:     #FAFAFA;
+      --white:  #FFFFFF;
+      --text:   #1E0A3C;
+      --text2:  #6B7280;
+      --border: #E9D5FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 18px; /* base grande */
+    }
+
+    /* ── PANTALLAS ── */
+    .screen { display: none; min-height: 100vh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── LOGIN ── */
+    #scr-login {
+      align-items: center; justify-content: center;
+      background: linear-gradient(145deg, #4C1D95, #7C3AED 60%, #EC4899);
+      padding: 24px;
+    }
+    .login-box {
+      background: white; border-radius: 28px; padding: 40px 28px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 32px 64px rgba(0,0,0,.3); text-align: center;
+    }
+    .login-logo  { font-size: 56px; margin-bottom: 10px; }
+    .login-brand { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--violet); margin-bottom: 4px; }
+    .login-sub   { font-size: 17px; color: var(--text2); margin-bottom: 32px; line-height: 1.5; }
+    .login-label { font-size: 16px; font-weight: 700; color: var(--violet); text-align: left; display: block; margin-bottom: 8px; }
+    .login-input {
+      width: 100%; padding: 18px 20px; border: 3px solid var(--border);
+      border-radius: 16px; font-size: 22px; font-family: inherit;
+      color: var(--text); text-align: center; letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
+    .login-input:focus { outline: none; border-color: var(--violet); }
+    .btn-grande {
+      width: 100%; padding: 20px; border: none; border-radius: 16px;
+      font-size: 20px; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .btn-grande:active { opacity: .85; }
+    .btn-primario { background: linear-gradient(135deg, var(--violet), var(--pink)); color: white; }
+    .btn-secundario { background: #f5f0ff; color: var(--violet); border: 3px solid var(--border); }
+    .btn-suave { background: none; color: var(--text2); font-size: 16px; }
+    .login-err { color: #EF4444; font-size: 16px; margin-top: 12px; display: none; line-height: 1.4; }
+
+    /* ── BIENVENIDA ── */
+    #scr-bienvenida {
+      align-items: center; justify-content: center;
+      background: linear-gradient(145deg, #4C1D95, #7C3AED 60%, #EC4899);
+      padding: 24px;
+    }
+    .bienvenida-box {
+      background: white; border-radius: 28px; padding: 40px 28px;
+      width: 100%; max-width: 400px; text-align: center;
+      box-shadow: 0 32px 64px rgba(0,0,0,.3);
+    }
+    .bienvenida-emoji  { font-size: 64px; margin-bottom: 12px; }
+    .bienvenida-titulo { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--violet); margin-bottom: 6px; }
+    .bienvenida-sub    { font-size: 17px; color: var(--text2); margin-bottom: 28px; }
+    .opciones          { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── PORTAL ── */
+    #scr-portal { background: var(--bg); }
+
+    .pm-header {
+      background: white; border-bottom: 2px solid var(--border);
+      padding: 14px 18px; display: flex; align-items: center;
+      justify-content: space-between; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(124,58,237,.08);
+    }
+    .pm-header-marca { display: flex; align-items: center; gap: 10px; }
+    .pm-header-logo  { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--violet); }
+    .pm-header-quien { font-size: 14px; color: var(--text2); }
+    .pm-menu-btn {
+      background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; gap: 6px; padding: 8px;
+    }
+    .pm-menu-btn span { display: block; width: 26px; height: 3px; background: var(--text); border-radius: 2px; }
+
+    /* Menú drawer */
+    .menu-overlay { display: none; position: fixed; inset: 0; z-index: 800; }
+    .menu-overlay.open { display: block; }
+    .menu-drawer {
+      position: absolute; top: 72px; right: 12px;
+      background: white; border-radius: 20px; padding: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.2); min-width: 240px;
+      animation: fadeDown .18s ease;
+    }
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .menu-header { padding: 12px 16px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .menu-nombre { font-weight: 700; font-size: 18px; color: var(--text); }
+    .menu-dni    { font-size: 14px; color: var(--text2); margin-top: 2px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 12px; cursor: pointer;
+      font-size: 17px; font-weight: 600; color: var(--text);
+      border: none; background: none; width: 100%; text-align: left;
+      font-family: inherit;
+    }
+    .menu-item:hover { background: var(--bg); }
+    .menu-item.danger { color: #ef4444; }
+    .menu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+
+    /* ── BUSCADOR grande ── */
+    .pm-buscar-section {
+      padding: 16px; background: white;
+      border-bottom: 2px solid var(--border);
+    }
+    .pm-buscar-label { font-size: 16px; font-weight: 700; color: var(--violet); margin-bottom: 8px; display: block; }
+    .pm-buscar-row { display: flex; gap: 10px; }
+    .pm-buscar-input {
+      flex: 1; padding: 16px 18px; border: 3px solid var(--border);
+      border-radius: 14px; font-size: 18px; font-family: inherit;
+      color: var(--text); background: #faf5ff;
+    }
+    .pm-buscar-input:focus { outline: none; border-color: var(--violet); }
+    .pm-buscar-btn {
+      padding: 16px 20px; background: var(--violet); color: white;
+      border: none; border-radius: 14px; font-size: 18px; cursor: pointer;
+    }
+    .pm-buscar-resultados {
+      position: absolute; left: 16px; right: 16px;
+      background: white; border: 3px solid var(--border);
+      border-top: none; border-radius: 0 0 16px 16px;
+      z-index: 100; max-height: 320px; overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(124,58,237,.12); display: none;
+    }
+    .pm-buscar-resultados.open { display: block; }
+    .pm-buscar-item {
+      padding: 16px 18px; border-bottom: 1px solid #f3f0ff;
+      cursor: pointer; font-size: 16px; line-height: 1.4;
+    }
+    .pm-buscar-item:last-child { border-bottom: none; }
+    .pm-buscar-item:hover, .pm-buscar-item:active { background: #f5f0ff; }
+    .pm-buscar-item.en-carrito { background: var(--green-lt); }
+    .pm-buscar-cod { font-size: 12px; font-weight: 700; color: var(--violet); background: #ede9fe; border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+    .pm-noresult { padding: 20px; text-align: center; color: var(--text2); font-size: 16px; }
+
+    /* ── LISTA DE PRODUCTOS ── */
+    .pm-lista-wrap { flex: 1; overflow-y: auto; padding: 14px 14px 120px; }
+    .pm-titulo-lista {
+      font-size: 15px; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 12px; display: flex; justify-content: space-between;
+    }
+
+    /* Cards de producto — grandes */
+    .pm-card {
+      background: white; border-radius: 18px; border: 3px solid var(--border);
+      padding: 16px 18px; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 14px;
+      transition: border-color .2s;
+    }
+    .pm-card.en-carrito { border-color: var(--green); background: var(--green-lt); }
+    .pm-card-info { flex: 1; min-width: 0; }
+    .pm-card-nombre { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 6px; }
+    .pm-card-codigo { font-size: 13px; color: var(--text2); }
+    .pm-card-promo { display: inline-block; font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+    .pm-card-badge { font-size: 15px; font-weight: 700; color: var(--green); margin-top: 4px; }
+    .pm-card-controles { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+    .pm-qty-wrap { display: flex; align-items: center; gap: 8px; }
+    .pm-qty-btn {
+      width: 46px; height: 46px; border-radius: 12px; border: none;
+      font-size: 26px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-family: inherit; transition: transform .1s;
+    }
+    .pm-qty-btn:active { transform: scale(.9); }
+    .pm-qty-btn.menos { background: #FEE2E2; color: #DC2626; }
+    .pm-qty-btn.mas   { background: #EDE9FE; color: var(--violet); }
+    .pm-qty-btn.agregar { background: var(--violet); color: white; font-size: 30px; }
+    .pm-qty-num { font-size: 22px; font-weight: 800; min-width: 28px; text-align: center; }
+    .pm-btn-borrar { background: none; border: none; color: #9CA3AF; font-size: 18px; cursor: pointer; padding: 4px; }
+
+    .pm-sin-prods { text-align: center; padding: 40px 20px; color: var(--text2); }
+    .pm-sin-emoji { font-size: 48px; margin-bottom: 12px; }
+    .pm-sin-prods p { font-size: 17px; line-height: 1.6; }
+
+    /* ── BOTÓN FINALIZAR ── */
+    .pm-finalizar-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white; border-top: 2px solid var(--border);
+      padding: 14px 16px; z-index: 300;
+      box-shadow: 0 -4px 20px rgba(124,58,237,.10);
+    }
+    @media (min-width: 768px) {
+      .pm-finalizar-bar { position: relative; }
+    }
+    .pm-btn-finalizar {
+      width: 100%; padding: 20px; border: none; border-radius: 16px;
+      background: linear-gradient(135deg, var(--violet), var(--pink));
+      color: white; font-size: 20px; font-weight: 700; font-family: inherit;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .pm-btn-finalizar:disabled { opacity: .35; cursor: default; }
+    .pm-fin-badge { background: rgba(255,255,255,.25); border-radius: 999px; padding: 3px 12px; font-size: 16px; }
+
+    /* ── MODAL CONFIRMACIÓN ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 500; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: white; border-radius: 28px 28px 0 0; padding: 24px 22px 36px; width: 100%; max-width: 520px; max-height: 95vh; overflow-y: auto; animation: slideUp .3s ease; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 48px; height: 5px; background: #E5E7EB; border-radius: 999px; margin: 0 auto 20px; }
+    .modal-titulo { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--violet); margin-bottom: 6px; }
+    .modal-sub    { font-size: 16px; color: var(--text2); margin-bottom: 18px; line-height: 1.5; }
+
+    .campo { margin-bottom: 16px; }
+    .campo label { font-size: 16px; font-weight: 700; color: var(--violet); display: block; margin-bottom: 8px; }
+    .campo input, .campo select, .campo textarea {
+      width: 100%; padding: 16px 18px; border: 3px solid var(--border);
+      border-radius: 14px; font-size: 18px; font-family: inherit;
+      color: var(--text); background: white;
+    }
+    .campo input:focus, .campo select:focus, .campo textarea:focus { outline: none; border-color: var(--violet); }
+
+    .resumen-pedido {
+      background: #fdf2f8; border: 2px solid #fbcfe8;
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 18px;
+      font-size: 16px;
+    }
+    .resumen-item { padding: 4px 0; line-height: 1.5; }
+    .resumen-nota {
+      margin-top: 10px; padding: 10px 12px;
+      background: #FEF3C7; border-radius: 10px;
+      font-size: 15px; color: #92400E; line-height: 1.5;
+    }
+
+    .btn-confirmar {
+      width: 100%; padding: 20px; border: none; border-radius: 16px;
+      background: linear-gradient(135deg, var(--violet), var(--pink));
+      color: white; font-size: 20px; font-weight: 700; font-family: inherit;
+      cursor: pointer; margin-top: 8px;
+    }
+    .btn-confirmar:disabled { opacity: .5; }
+    .btn-cancelar {
+      width: 100%; padding: 14px; border: none; background: none;
+      color: var(--text2); font-size: 17px; cursor: pointer; font-family: inherit; margin-top: 8px;
+    }
+
+    /* ── PANTALLA OK ── */
+    #scr-ok {
+      align-items: center; justify-content: center; text-align: center;
+      background: linear-gradient(145deg, #4C1D95, #7C3AED 60%, #EC4899);
+      padding: 28px;
+    }
+    .ok-box {
+      background: white; border-radius: 28px; padding: 44px 28px;
+      max-width: 380px; width: 100%;
+    }
+    .ok-emoji  { font-size: 72px; margin-bottom: 14px; }
+    .ok-titulo { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--violet); margin-bottom: 10px; }
+    .ok-sub    { font-size: 18px; color: var(--text2); line-height: 1.6; margin-bottom: 28px; }
+    .ok-btns   { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── MIS PEDIDOS ── */
+    #scr-pedidos { background: var(--bg); }
+    .pedidos-header {
+      background: linear-gradient(135deg, var(--violet), var(--pink));
+      padding: 20px 18px 18px; color: white;
+    }
+    .pedidos-volver {
+      background: rgba(255,255,255,.2); border: none; color: white;
+      border-radius: 10px; padding: 8px 16px; font-size: 16px;
+      cursor: pointer; font-family: inherit; margin-bottom: 12px;
+    }
+    .pedidos-titulo { font-family: 'Playfair Display', serif; font-size: 24px; }
+    .pedidos-quien  { font-size: 16px; opacity: .85; margin-top: 3px; }
+    .pedidos-lista  { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
+    .pedido-item {
+      background: white; border-radius: 18px; padding: 18px 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .pedido-item-fecha { font-size: 15px; color: var(--text2); margin-bottom: 6px; }
+    .pedido-item-estado {
+      display: inline-block; font-size: 14px; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px; margin-left: 8px;
+    }
+    .pedido-item-prods { font-size: 16px; color: var(--text); line-height: 1.7; margin-top: 8px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      background: var(--text); color: white; padding: 12px 22px;
+      border-radius: 999px; font-size: 17px; font-weight: 500;
+      opacity: 0; transition: opacity .3s; z-index: 999;
+      white-space: nowrap; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* geo estado */
+    #geo-estado { font-size: 15px; color: var(--text2); margin-top: 6px; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div class="screen active" id="scr-login">
+  <div class="login-box" style="margin:auto;">
+    <div class="login-logo">💜</div>
+    <div class="login-brand">Violetta</div>
+    <div class="login-sub">Para comenzar,<br>escribí tu número de documento</div>
+    <label class="login-label">Tu DNI (sin puntos)</label>
+    <input type="number" class="login-input" id="dniInput"
+      placeholder="30123456" inputmode="numeric"
+      autofocus>
+    <button class="btn-grande btn-primario" onclick="loginDNI()">
+      Entrar 💜
+    </button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ BIENVENIDA ═══════════════════ -->
+<div class="screen" id="scr-bienvenida">
+  <div class="bienvenida-box" style="margin:auto;">
+    <div class="bienvenida-emoji">💜</div>
+    <div class="bienvenida-titulo" id="bienvenida-nombre">¡Hola!</div>
+    <div class="bienvenida-sub">¿Qué querés hacer hoy?</div>
+    <div class="opciones">
+      <button class="btn-grande btn-primario" onclick="iniciarPortal()">
+        🛍️ Hacer un pedido
+      </button>
+      <button class="btn-grande btn-secundario" onclick="verMisPedidosDesdeBienvenida()">
+        📋 Ver mis pedidos anteriores
+      </button>
+      <button class="btn-grande btn-suave" onclick="cerrarSesion()">
+        No soy yo — cambiar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PORTAL ═══════════════════ -->
+<div class="screen" id="scr-portal">
+
+  <!-- Header -->
+  <div class="pm-header">
+    <div class="pm-header-marca">
+      <span style="font-size:26px;">💜</span>
+      <div>
+        <div class="pm-header-logo">Violetta</div>
+        <div class="pm-header-quien" id="hdr-vend">Cargando...</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="pm-btn-finalizar" id="btn-fin-hdr" onclick="abrirModal()"
+        style="width:auto;padding:12px 18px;font-size:16px;border-radius:12px;" disabled>
+        🛒 <span id="carrito-count" style="background:rgba(255,255,255,.25);border-radius:999px;padding:1px 8px;font-size:14px;">0</span>
+      </button>
+      <button class="pm-menu-btn" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Menú sandwich -->
+  <div class="menu-overlay" id="menu-overlay" onclick="cerrarMenu()">
+    <div class="menu-drawer" onclick="e=>e.stopPropagation()">
+      <div class="menu-header">
+        <div class="menu-nombre" id="menu-nombre">—</div>
+        <div class="menu-dni" id="menu-dni"></div>
+      </div>
+      <button class="menu-item" onclick="menuNuevoPedido()">➕ Nuevo pedido</button>
+      <button class="menu-item" onclick="menuVerPedidos()">📋 Mis pedidos</button>
+      <div class="menu-sep"></div>
+      <button class="menu-item danger" onclick="menuCerrarSesion()">🔄 Cambiar de clienta</button>
+    </div>
+  </div>
+
+  <!-- Buscador -->
+  <div class="pm-buscar-section" style="position:relative;">
+    <span class="pm-buscar-label">Buscá el producto por nombre o código</span>
+    <div class="pm-buscar-row">
+      <input type="text" class="pm-buscar-input" id="buscar-input"
+        placeholder="Ej: crema, labial, 101785..."
+        oninput="onBuscarInput(this.value)"
+        onblur="setTimeout(()=>cerrarBuscar(),200)">
+      <button class="pm-buscar-btn" onclick="limpiarBuscar()">✕</button>
+    </div>
+    <div class="pm-buscar-resultados" id="buscar-resultados"></div>
+  </div>
+
+  <!-- Lista de productos -->
+  <div class="pm-lista-wrap">
+    <div class="pm-titulo-lista">
+      <span id="prods-titulo">Productos</span>
+      <span id="prods-count" style="color:var(--violet);"></span>
+    </div>
+    <div id="productos-lista">
+      <div class="pm-sin-prods">
+        <div class="pm-sin-emoji">🔍</div>
+        <p>Buscá el producto que querés<br>en el campo de arriba</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botón finalizar -->
+  <div class="pm-finalizar-bar">
+    <button class="pm-btn-finalizar" id="btn-finalizar" onclick="abrirModal()" disabled>
+      Confirmar mi pedido
+      <span class="pm-fin-badge" id="btn-fin-label">0 productos</span>
+    </button>
+  </div>
+
+</div><!-- scr-portal -->
+
+<!-- ═══════════════════ MODAL DATOS ═══════════════════ -->
+<div class="modal-overlay" id="modal-datos">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-titulo">¿Todo bien con tu pedido? 💜</div>
+    <div class="modal-sub">Revisá tus productos y completá tus datos para que te los entreguen</div>
+
+    <div class="resumen-pedido" id="modal-resumen"></div>
+
+    <div class="campo">
+      <label>Tu número de documento</label>
+      <input type="number" id="m-dni" inputmode="numeric" placeholder="30123456"
+        onblur="autocompletarPorDNI(this.value)">
+    </div>
+    <div class="campo">
+      <label>Tu nombre y apellido</label>
+      <input type="text" id="m-nombre" placeholder="Ej: María González">
+    </div>
+    <div class="campo">
+      <label>Tu teléfono</label>
+      <input type="tel" id="m-tel" placeholder="11 1234-5678" inputmode="numeric">
+    </div>
+    <div class="campo">
+      <label>Tu dirección</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="m-dir" placeholder="Calle, número, piso..." style="flex:1;">
+        <button onclick="obtenerGeolocalizacion()" title="Usar mi ubicación"
+          style="background:var(--violet);color:white;border:none;border-radius:14px;padding:14px 16px;font-size:22px;cursor:pointer;flex-shrink:0;">
+          📍
+        </button>
+      </div>
+      <div id="geo-estado"></div>
+    </div>
+    <div class="campo">
+      <label>¿Cómo vas a pagar?</label>
+      <select id="m-pago" style="font-size:18px;">
+        <option value="">— Elegí una opción —</option>
+        <option>Efectivo</option>
+        <option>Transferencia</option>
+        <option>Débito</option>
+        <option>Crédito</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>¿Alguna nota? (opcional)</label>
+      <textarea id="m-notas" rows="2" placeholder="Horarios, referencias del lugar..."></textarea>
+    </div>
+
+    <button class="btn-confirmar" id="btn-confirmar" onclick="confirmarPedido()">
+      💜 Enviar mi pedido
+    </button>
+    <button class="btn-cancelar" onclick="cerrarModal()">
+      ← Seguir eligiendo productos
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════ PANTALLA OK ═══════════════════ -->
+<div class="screen" id="scr-ok">
+  <div class="ok-box" style="margin:auto;">
+    <div class="ok-emoji">🎉</div>
+    <div class="ok-titulo">¡Pedido enviado!</div>
+    <div class="ok-sub" id="ok-msg">Tu vendedora recibió tu pedido y te va a confirmar el precio por WhatsApp. 💜</div>
+    <div class="ok-btns">
+      <button class="btn-grande btn-primario" onclick="menuNuevoPedido()">
+        ➕ Hacer otro pedido
+      </button>
+      <button class="btn-grande btn-secundario" onclick="menuVerPedidos()">
+        📋 Ver mis pedidos
+      </button>
+      <button class="btn-grande btn-suave" onclick="cerrarSesion()">
+        Cambiar de clienta
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MIS PEDIDOS ═══════════════════ -->
+<div class="screen" id="scr-pedidos">
+  <div class="pedidos-header">
+    <button class="pedidos-volver" onclick="showScreen('ok')">← Volver</button>
+    <div class="pedidos-titulo">Mis pedidos</div>
+    <div class="pedidos-quien" id="pedidos-cliente-nombre"></div>
+  </div>
+  <div class="pedidos-lista" id="pedidos-cliente-lista"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPA_URL = 'https://vangwjxeebbzbqejyzsp.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbmd3anhlZWJiemJxZWp5enNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxODc2NDgsImV4cCI6MjA5MTc2MzY0OH0.IjFNt8t1-YU4aUOgB-y8UFGAgHqL8qFNOwCIyxCvFj8';
+
+  const urlParams      = new URLSearchParams(window.location.search);
+  const vendedoraParam = urlParams.get('v') || null;
+  const campanaParam   = urlParams.get('c') || null;
+
+  let currentCliente        = null;
+  let vendedoraSeleccionada = null;
+  let allProductosCli       = [];
+  let carrito               = {};
+
+  // ── SUPABASE ───────────────────────────────────────────────
+  function H(){ return {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}; }
+  async function sGet(t,q=''){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${q}`,{headers:H()});if(!r.ok)throw new Error(await r.text());return r.json();}
+  async function sPost(t,d){const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:{...H(),'Prefer':'return=representation'},body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
+
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+  function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('scr-'+id).classList.add('active'); }
+
+  // ── LOGIN ──────────────────────────────────────────────────
+  async function loginDNI(){
+    const dni = document.getElementById('dniInput').value.trim();
+    if(!dni || dni.length < 6){ showLoginErr('Por favor ingresá tu DNI completo sin puntos'); return; }
+    const btn = document.querySelector('.btn-grande.btn-primario');
+    btn.disabled = true; btn.textContent = 'Buscando...';
+    try{
+      let rows = await sGet('clientes', `dni=eq.${dni}`);
+      if(rows.length){
+        currentCliente = rows[0];
+      } else {
+        const [nuevo] = await sPost('clientes', {dni, nombre:'Cliente '+dni, activo:true});
+        currentCliente = nuevo;
+      }
+      localStorage.setItem('violeta_promay', JSON.stringify(currentCliente));
+      const tieneNombre = currentCliente.nombre && !currentCliente.nombre.startsWith('Cliente ');
+      if(tieneNombre){
+        mostrarBienvenida();
+      } else {
+        await iniciarPortal();
+      }
+    }catch(e){
+      showLoginErr('Hubo un problema de conexión. Intentá de nuevo.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Entrar 💜';
+    }
+  }
+
+  function showLoginErr(msg){
+    const e = document.getElementById('loginErr');
+    e.textContent = msg; e.style.display = 'block';
+    setTimeout(() => e.style.display = 'none', 5000);
+  }
+
+  function mostrarBienvenida(){
+    const nombre = currentCliente.nombre.split(' ')[0];
+    document.getElementById('bienvenida-nombre').textContent = '¡Hola, ' + nombre + '! 💜';
+    showScreen('bienvenida');
+  }
+
+  async function verMisPedidosDesdeBienvenida(){
+    await iniciarPortal();
+    verMisPedidos();
+  }
+
+  // ── PORTAL ─────────────────────────────────────────────────
+  async function iniciarPortal(){
+    showScreen('portal');
+    await cargarVendedora();
+    const campNum = campanaParam || '6';
+    await cargarCatalogo(campNum);
+    // Mostrar todos los productos al arrancar
+    renderLista(allProductosCli);
+  }
+
+  async function cargarVendedora(){
+    try{
+      const vends = await sGet('vendedoras', 'activa=eq.true');
+      if(vendedoraParam)
+        vendedoraSeleccionada = vends.find(v => v.username.toLowerCase() === vendedoraParam.toLowerCase()) || null;
+      if(!vendedoraSeleccionada && vends.length) vendedoraSeleccionada = vends[0];
+      document.getElementById('hdr-vend').textContent = vendedoraSeleccionada
+        ? 'Vendedora: ' + vendedoraSeleccionada.nombre : '';
+    }catch(e){}
+  }
+
+  async function cargarCatalogo(numCamp){
+    const variantes = [
+      'campana=eq.' + encodeURIComponent('Campaña ' + numCamp + '/26'),
+      'campana=eq.' + encodeURIComponent(numCamp.padStart(2,'0') + '/26'),
+      'campana=eq.' + encodeURIComponent(numCamp + '/26'),
+    ];
+    try{
+      let prods = [];
+      for(const q of variantes){
+        prods = await sGet('productos', q + '&select=*&limit=1000&order=nombre.asc');
+        if(prods.length) break;
+      }
+      allProductosCli = prods;
+      document.getElementById('prods-titulo').textContent = 'Campaña ' + numCamp + '/26';
+    }catch(e){ toast('Error al cargar productos'); }
+  }
+
+  // ── BUSCADOR ───────────────────────────────────────────────
+  function onBuscarInput(q){
+    const res = document.getElementById('buscar-resultados');
+    if(!q.trim()){ res.classList.remove('open'); renderLista(allProductosCli); return; }
+
+    const qLow = q.toLowerCase().trim();
+    const hits = allProductosCli.filter(p =>
+      String(p.codigo).includes(qLow) ||
+      (p.nombre||'').toLowerCase().includes(qLow)
+    ).slice(0, 15);
+
+    if(!hits.length){
+      res.innerHTML = `<div class="pm-noresult">No encontramos "${q}"<br>Probá con otro nombre o código</div>`;
+    } else {
+      res.innerHTML = hits.map(p => {
+        const enC = !!carrito[p.codigo];
+        return `<div class="pm-buscar-item ${enC?'en-carrito':''}" onclick="seleccionarDeBusqueda('${p.codigo}')">
+          <span class="pm-buscar-cod">${p.codigo}</span>
+          ${p.nombre}
+          ${enC ? ' ✅' : ''}
+        </div>`;
+      }).join('');
+    }
+    res.classList.add('open');
+    // Mostrar también en la lista principal
+    renderLista(hits);
+  }
+
+  function seleccionarDeBusqueda(codigo){
+    agregarAlCarrito(codigo);
+    limpiarBuscar();
+  }
+
+  function limpiarBuscar(){
+    document.getElementById('buscar-input').value = '';
+    cerrarBuscar();
+    renderLista(allProductosCli);
+  }
+  function cerrarBuscar(){
+    document.getElementById('buscar-resultados').classList.remove('open');
+  }
+
+  // ── RENDER LISTA ───────────────────────────────────────────
+  function renderLista(prods){
+    const lista = document.getElementById('productos-lista');
+    const count = document.getElementById('prods-count');
+    count.textContent = prods.length ? prods.length + ' productos' : '';
+
+    if(!prods.length){
+      lista.innerHTML = `<div class="pm-sin-prods"><div class="pm-sin-emoji">🔍</div><p>No hay productos para mostrar.<br>Probá buscar con otro nombre.</p></div>`;
+      return;
+    }
+    lista.innerHTML = prods.map(p => tarjeta(p)).join('');
+  }
+
+  function tarjeta(p){
+    const enCarrito = carrito[p.codigo];
+    const qty = enCarrito ? enCarrito.qty : 0;
+    const promoTipo = p.promo_tipo || '';
+    let promoTag = '';
+    if(promoTipo === 'lanzamiento') promoTag = `<span class="pm-card-promo" style="background:#FEF3C7;color:#B45309;">🚀 LANZAMIENTO</span>`;
+    else if(promoTipo === 'oferta_especial') promoTag = `<span class="pm-card-promo" style="background:#D1FAE5;color:#065F46;">⚡ OFERTA</span>`;
+    else if(promoTipo === 'escala') promoTag = `<span class="pm-card-promo" style="background:#EDE9FE;color:#5B21B6;">📊 ESCALA</span>`;
+    else if(promoTipo === 'con_compra') promoTag = `<span class="pm-card-promo" style="background:#E0F2FE;color:#0369A1;">🎁 PROMO</span>`;
+
+    const controles = enCarrito
+      ? `<div class="pm-qty-wrap">
+           <button class="pm-qty-btn menos" onclick="cambiarQty('${p.codigo}',-1)">−</button>
+           <span class="pm-qty-num">${qty}</span>
+           <button class="pm-qty-btn mas" onclick="cambiarQty('${p.codigo}',1)">+</button>
+         </div>
+         <button class="pm-btn-borrar" onclick="quitarDelCarrito('${p.codigo}')">✕ Quitar</button>`
+      : `<button class="pm-qty-btn agregar" onclick="agregarAlCarrito('${p.codigo}')">+</button>`;
+
+    return `<div class="pm-card ${enCarrito?'en-carrito':''}" id="pcard-${p.codigo}">
+      <div class="pm-card-info">
+        <div class="pm-card-nombre">${p.nombre}${promoTag}</div>
+        <div class="pm-card-codigo">Código: ${p.codigo}</div>
+        ${enCarrito ? `<div class="pm-card-badge">✅ Agregado al pedido</div>` : ''}
+      </div>
+      <div class="pm-card-controles">${controles}</div>
+    </div>`;
+  }
+
+  // ── CARRITO ────────────────────────────────────────────────
+  function agregarAlCarrito(codigo){
+    const prod = allProductosCli.find(p => p.codigo === codigo);
+    if(!prod) return;
+    if(!carrito[codigo]) carrito[codigo] = {...prod, qty: 0};
+    carrito[codigo].qty++;
+    actualizarUI(codigo);
+    toast('✅ ' + prod.nombre.substring(0, 30) + '...');
+  }
+
+  function cambiarQty(codigo, delta){
+    if(!carrito[codigo]) return;
+    carrito[codigo].qty += delta;
+    if(carrito[codigo].qty <= 0) delete carrito[codigo];
+    actualizarUI(codigo);
+  }
+
+  function quitarDelCarrito(codigo){
+    delete carrito[codigo];
+    actualizarUI(codigo);
+  }
+
+  function actualizarUI(codigoModificado){
+    const prod = allProductosCli.find(p => p.codigo === codigoModificado);
+    const card = document.getElementById('pcard-' + codigoModificado);
+    if(card && prod) card.outerHTML = tarjeta(prod);
+
+    const totalItems = Object.values(carrito).reduce((s,p) => s + p.qty, 0);
+    document.getElementById('carrito-count').textContent = totalItems;
+    const btnFin = document.getElementById('btn-finalizar');
+    const btnFinHdr = document.getElementById('btn-fin-hdr');
+    btnFin.disabled = totalItems === 0;
+    btnFinHdr.disabled = totalItems === 0;
+    document.getElementById('btn-fin-label').textContent =
+      totalItems === 0 ? '0 productos' : `${totalItems} producto${totalItems > 1 ? 's' : ''}`;
+  }
+
+  // ── MODAL ──────────────────────────────────────────────────
+  function abrirModal(){
+    if(Object.keys(carrito).length === 0){ toast('Agregá al menos un producto'); return; }
+    if(currentCliente?.dni) document.getElementById('m-dni').value = currentCliente.dni;
+    if(currentCliente?.nombre && !currentCliente.nombre.startsWith('Cliente '))
+      document.getElementById('m-nombre').value = currentCliente.nombre;
+    if(currentCliente?.telefono) document.getElementById('m-tel').value = currentCliente.telefono;
+    if(currentCliente?.direccion) document.getElementById('m-dir').value = currentCliente.direccion;
+    document.getElementById('geo-estado').style.display = 'none';
+    renderResumen();
+    document.getElementById('modal-datos').classList.add('open');
+  }
+
+  function cerrarModal(){
+    document.getElementById('modal-datos').classList.remove('open');
+  }
+
+  function renderResumen(){
+    const items = Object.values(carrito);
+    let html = items.map(p =>
+      `<div class="resumen-item">• ${p.qty}x ${p.nombre}</div>`
+    ).join('');
+    html += `<div class="resumen-nota">💜 Tu vendedora te confirma el precio total antes de que pagues.</div>`;
+    document.getElementById('modal-resumen').innerHTML = html;
+  }
+
+  async function autocompletarPorDNI(dni){
+    if(!dni || dni.length < 6) return;
+    try{
+      const rows = await sGet('clientes', `dni=eq.${dni}`);
+      if(!rows.length) return;
+      const cli = rows[0];
+      currentCliente = cli;
+      localStorage.setItem('violeta_promay', JSON.stringify(cli));
+      if(cli.nombre && !cli.nombre.startsWith('Cliente '))
+        document.getElementById('m-nombre').value = cli.nombre;
+      if(cli.telefono) document.getElementById('m-tel').value = cli.telefono;
+      if(cli.direccion) document.getElementById('m-dir').value = cli.direccion;
+      toast('✅ Tus datos se cargaron automáticamente');
+    }catch(e){}
+  }
+
+  // ── GEOLOCALIZACIÓN ────────────────────────────────────────
+  function obtenerGeolocalizacion(){
+    const estado = document.getElementById('geo-estado');
+    const dirInput = document.getElementById('m-dir');
+    if(!navigator.geolocation){
+      estado.textContent = '⚠️ Tu dispositivo no tiene GPS';
+      estado.style.display = 'block'; return;
+    }
+    estado.textContent = '📍 Buscando tu ubicación...';
+    estado.style.display = 'block'; estado.style.color = '#7c3aed';
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const {latitude:lat, longitude:lng, accuracy} = pos.coords;
+        try{
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`, {headers:{'Accept-Language':'es'}});
+          const data = await res.json();
+          const addr = data.address || {};
+          const partes = [addr.road||addr.pedestrian, addr.house_number, addr.suburb||addr.neighbourhood, addr.city||addr.town||addr.village].filter(Boolean);
+          const dir = partes.join(', ');
+          dirInput.value = dir || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          estado.textContent = `✅ Ubicación encontrada (precisión ±${Math.round(accuracy)}m)`;
+          estado.style.color = '#059669';
+        }catch(e){
+          dirInput.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          estado.textContent = `✅ Coordenadas obtenidas`;
+          estado.style.color = '#059669';
+        }
+      },
+      err => {
+        const msgs = {1:'Permiso denegado — activá el GPS',2:'No se pudo obtener la ubicación',3:'Tardó demasiado — intentá de nuevo'};
+        estado.textContent = '⚠️ ' + (msgs[err.code] || 'Error');
+        estado.style.color = '#ef4444';
+      },
+      {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+    );
+  }
+
+  // ── CONFIRMAR PEDIDO ───────────────────────────────────────
+  async function confirmarPedido(){
+    const dni    = document.getElementById('m-dni').value.trim();
+    const nombre = document.getElementById('m-nombre').value.trim();
+    const tel    = document.getElementById('m-tel').value.trim();
+    const dir    = document.getElementById('m-dir').value.trim();
+    const pago   = document.getElementById('m-pago').value;
+    const notas  = document.getElementById('m-notas').value.trim();
+
+    if(!nombre){ toast('⚠️ Escribí tu nombre'); return; }
+    if(!pago)  { toast('⚠️ Elegí cómo vas a pagar'); return; }
+
+    const btn = document.getElementById('btn-confirmar');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+
+    try{
+      const camp = campanaParam ? 'Campaña ' + campanaParam + '/26' : '—';
+      const items = Object.values(carrito);
+      const productosStr = items.map(p => `${p.qty}x ${p.codigo} ${p.nombre}`).join('\n');
+
+      const pedido = {
+        nombre_cliente: nombre,
+        telefono:       tel,
+        direccion:      dir,
+        pago:           pago,
+        notas:          notas,
+        campana:        camp,
+        productos:      productosStr,
+        vendedora_id:   vendedoraSeleccionada?.id || null,
+        vendedora_username: vendedoraSeleccionada?.username || null,
+        estado:         'pendiente',
+        cliente_id:     currentCliente?.id || null,
+      };
+
+      await sPost('pedidos', pedido);
+
+      // Actualizar datos del cliente
+      if(currentCliente?.id){
+        const upd = {};
+        if(nombre) upd.nombre = nombre;
+        if(tel)    upd.telefono = tel;
+        if(dir)    upd.direccion = dir;
+        if(Object.keys(upd).length){
+          await fetch(`${SUPA_URL}/rest/v1/clientes?id=eq.${currentCliente.id}`,{
+            method:'PATCH', headers:{...H(),'Prefer':'return=representation'}, body:JSON.stringify(upd)
+          }).catch(()=>{});
+          currentCliente = {...currentCliente, ...upd};
+          localStorage.setItem('violeta_promay', JSON.stringify(currentCliente));
+        }
+      }
+
+      // WhatsApp a la vendedora
+      const vendTel = vendedoraSeleccionada?.telefono || '';
+      if(vendTel){
+        const msg = `💜 *Nuevo pedido — ${camp}*\n\n`
+          + `👤 ${nombre}${tel?' · '+tel:''}\n`
+          + `🏠 ${dir||'—'}\n💳 ${pago}\n\n`
+          + items.map(p=>`• ${p.qty}x ${p.codigo} ${p.nombre}`).join('\n')
+          + (notas ? `\n\n📝 ${notas}` : '');
+        setTimeout(() => window.open(`https://wa.me/${vendTel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank'), 400);
+      }
+
+      cerrarModal();
+      carrito = {};
+      actualizarUI('_reset');
+      document.getElementById('ok-msg').textContent =
+        `Tu pedido fue enviado a ${vendedoraSeleccionada?.nombre||'tu vendedora'}. Te va a confirmar el precio por WhatsApp. 💜`;
+      showScreen('ok');
+
+    }catch(e){
+      toast('❌ Error al enviar. Intentá de nuevo.');
+    }finally{
+      btn.disabled = false; btn.textContent = '💜 Enviar mi pedido';
+    }
+  }
+
+  // ── MENÚ SANDWICH ──────────────────────────────────────────
+  function toggleMenu(){
+    const o = document.getElementById('menu-overlay');
+    o.classList.toggle('open');
+    if(o.classList.contains('open') && currentCliente){
+      const nom = currentCliente.nombre && !currentCliente.nombre.startsWith('Cliente ')
+        ? currentCliente.nombre : 'Clienta';
+      document.getElementById('menu-nombre').textContent = nom;
+      document.getElementById('menu-dni').textContent = 'DNI: ' + currentCliente.dni;
+    }
+  }
+  function cerrarMenu(){ document.getElementById('menu-overlay').classList.remove('open'); }
+  function menuNuevoPedido(){ cerrarMenu(); carrito = {}; actualizarUI('_reset'); iniciarPortal(); }
+  function menuVerPedidos()  { cerrarMenu(); verMisPedidos(); }
+  function menuCerrarSesion(){ cerrarMenu(); cerrarSesion(); }
+
+  // ── MIS PEDIDOS ────────────────────────────────────────────
+  async function verMisPedidos(){
+    showScreen('pedidos');
+    const nom = currentCliente?.nombre || currentCliente?.dni || '';
+    document.getElementById('pedidos-cliente-nombre').textContent = nom;
+    const lista = document.getElementById('pedidos-cliente-lista');
+    lista.innerHTML = '<div style="text-align:center;padding:30px;font-size:18px;color:#9ca3af;">Cargando...</div>';
+    try{
+      const peds = await sGet('pedidos', `cliente_id=eq.${currentCliente.id}&select=*&order=created_at.desc&limit=20`);
+      if(!peds.length){
+        lista.innerHTML = '<div style="text-align:center;padding:40px;font-size:18px;color:#9ca3af;">Todavía no tenés pedidos. 💜</div>';
+        return;
+      }
+      const estadoLabel = {pendiente:'⏳ Pendiente',listo:'✅ Listo',entregado:'📬 Entregado',cobrado:'💰 Cobrado',cancelado:'❌ Cancelado'};
+      const estadoColor = {pendiente:'#f59e0b',listo:'#7c3aed',entregado:'#059669',cobrado:'#059669',cancelado:'#ef4444'};
+      lista.innerHTML = peds.map(p => {
+        const fecha = p.created_at ? new Date(p.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+        const prods = (p.productos||'').split(/[|\n]/).filter(Boolean);
+        const col = estadoColor[p.estado] || '#6b7280';
+        return `<div class="pedido-item">
+          <div class="pedido-item-fecha">
+            📅 ${fecha}
+            <span class="pedido-item-estado" style="background:${col}18;color:${col};">
+              ${estadoLabel[p.estado] || p.estado || 'pendiente'}
+            </span>
+          </div>
+          <div class="pedido-item-prods">
+            ${prods.slice(0,4).map(pr => `• ${pr.trim()}`).join('<br>')}
+            ${prods.length > 4 ? `<br><span style="color:#9ca3af;">+ ${prods.length-4} productos más</span>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }catch(e){
+      lista.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444;font-size:18px;">Error al cargar los pedidos.</div>';
+    }
+  }
+
+  function cerrarSesion(){
+    currentCliente = null;
+    localStorage.removeItem('violeta_promay');
+    carrito = {};
+    document.getElementById('dniInput').value = '';
+    showScreen('login');
+  }
+
+  // ── INIT ───────────────────────────────────────────────────
+  // Siempre pedir DNI al cargar
+  localStorage.removeItem('violeta_promay');
+
+  document.addEventListener('keypress', e => {
+    if(e.key === 'Enter' && document.getElementById('scr-login').classList.contains('active')) loginDNI();
+  });
+</script>
+</body>
+</html>
