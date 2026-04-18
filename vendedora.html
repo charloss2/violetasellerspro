@@ -13,6 +13,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mis Violetta Seller</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JS SDK para Google OAuth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root{--bg:#faf5ff;--surface:#fff;--border:#e9d5ff;--accent:#7c3aed;--accent2:#a855f7;--accent3:#ec4899;--text:#1e0a3c;--text2:#6b21a8;--text3:#a78bfa;--danger:#ef4444;--success:#10b981;--warning:#f59e0b;--shadow:0 4px 24px rgba(124,58,237,0.08);}
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -21,7 +23,12 @@
     .login-box{background:white;border-radius:24px;padding:44px 36px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center;}
     .login-emoji{font-size:52px;margin-bottom:16px;}
     .login-title{font-family:'Playfair Display',serif;font-size:30px;color:var(--accent);margin-bottom:8px;}
-    .login-sub{color:#9ca3af;font-size:14px;margin-bottom:32px;}
+    .login-sub{color:#9ca3af;font-size:14px;margin-bottom:24px;}
+    .btn-google{width:100%;padding:14px;background:white;color:#374151;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:16px;}
+    .btn-google:hover{border-color:#7c3aed;box-shadow:0 4px 12px rgba(124,58,237,.15);}
+    .login-divider{display:flex;align-items:center;gap:10px;margin-bottom:16px;color:#9ca3af;font-size:13px;}
+    .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:#e5e7eb;}
+    .login-pendiente{background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:16px;margin-top:16px;font-size:14px;color:#92400E;line-height:1.5;display:none;}
     .field{margin-bottom:16px;text-align:left;}
     .field label{display:block;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
     .field input,.field select,.field textarea{width:100%;background:var(--bg);border:2px solid var(--border);color:var(--text);padding:13px 16px;border-radius:12px;font-size:15px;font-family:inherit;transition:border-color .2s;}
@@ -160,6 +167,22 @@
     <div class="login-emoji">💜</div>
     <h1 class="login-title">Violetta Seller</h1>
     <p class="login-sub">Panel de vendedoras</p>
+
+    <!-- Google OAuth -->
+    <button class="btn-google" onclick="loginConGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Ingresar con Google
+    </button>
+
+    <!-- Mensaje cuenta pendiente de aprobación -->
+    <div class="login-pendiente" id="loginPendiente">
+      ⏳ <strong>Tu cuenta está pendiente de aprobación.</strong><br>
+      La administradora habilitará tu acceso en breve. Volvé a intentar en unos minutos.
+    </div>
+
+    <!-- Divider -->
+    <div class="login-divider">o ingresá con usuario y contraseña</div>
+
     <div class="field"><label>Usuario</label><input type="text" id="loginUser" placeholder="Tu usuario" autocomplete="username"></div>
     <div class="field"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="btn-main" onclick="doLogin()">Ingresar 💜</button>
@@ -417,6 +440,72 @@
 <script>
   let SUPA_URL = 'https://vangwjxeebbzbqejyzsp.supabase.co';
   let SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbmd3anhlZWJiemJxZWp5enNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxODc2NDgsImV4cCI6MjA5MTc2MzY0OH0.IjFNt8t1-YU4aUOgB-y8UFGAgHqL8qFNOwCIyxCvFj8';
+
+  // ── SUPABASE JS CLIENT (para Google OAuth) ─────────────────────
+  const _sbClient = window.supabase?.createClient(SUPA_URL, SUPA_KEY);
+
+  // ── GOOGLE LOGIN ────────────────────────────────────────────────
+  async function loginConGoogle(){
+    if(!_sbClient){ toast('⚠️ Error cargando SDK'); return; }
+    const btn = document.querySelector('.btn-google');
+    btn.disabled = true; btn.textContent = 'Redirigiendo a Google...';
+    try{
+      const { error } = await _sbClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href.split('?')[0] }
+      });
+      if(error) throw error;
+    }catch(e){
+      toast('❌ ' + e.message);
+      btn.disabled = false;
+      btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px;height:20px;"> Ingresar con Google';
+    }
+  }
+
+  // ── MANEJAR RETORNO DE GOOGLE ───────────────────────────────────
+  async function checkGoogleSession(){
+    if(!_sbClient) return;
+    const { data:{ session } } = await _sbClient.auth.getSession();
+    if(!session) return;
+
+    const email  = session.user.email;
+    const nombre = session.user.user_metadata?.full_name || email.split('@')[0];
+    const avatar = session.user.user_metadata?.avatar_url || '';
+
+    try{
+      // Buscar vendedora existente por email
+      const rows = await sGet('vendedoras', `email=eq.${encodeURIComponent(email)}&select=*`);
+
+      if(rows.length){
+        const vend = rows[0];
+        if(!vend.activa){
+          document.getElementById('loginPendiente').style.display = 'block';
+          await _sbClient.auth.signOut();
+          return;
+        }
+        setLoggedIn(vend);
+      } else {
+        // Primera vez → crear cuenta pendiente de aprobación
+        const username = email.split('@')[0].replace(/[^a-z0-9]/gi,'').toLowerCase();
+        await sPost('vendedoras', {
+          nombre, username, email, avatar,
+          password_hash: btoa('google:' + email),
+          activa: false,
+          cbus: '[]',
+        });
+        document.getElementById('loginPendiente').style.display = 'block';
+        await _sbClient.auth.signOut();
+        toast('✅ Cuenta creada — la admin te habilitará el acceso');
+      }
+    }catch(e){
+      if(e.message?.includes('email') || e.message?.includes('column')){
+        toast('⚠️ Ejecutá primero el SQL de migración en Supabase');
+      } else {
+        toast('❌ ' + e.message);
+      }
+      console.error(e);
+    }
+  }
   let currentUser = null;
   let misPedidos = [];
   let misClientes = [];
@@ -2188,6 +2277,9 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
       document.getElementById('welcomeName').textContent=currentUser.nombre||currentUser.username;
       cargarPedidos();agregarProducto();cargarPerfil();
     }catch(e){localStorage.removeItem('violeta_logged_vendor');}
+  } else {
+    // Verificar si hay sesión de Google al volver del redirect
+    checkGoogleSession();
   }
   document.addEventListener('keypress',e=>{if(e.key==='Enter'&&document.getElementById('loginWrap').style.display!=='none')doLogin();});
 
