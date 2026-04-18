@@ -468,6 +468,9 @@
     const { data:{ session } } = await _sbClient.auth.getSession();
     if(!session) return;
 
+    // Limpiar el hash de la URL (access_token etc.) — ya no es necesario mostrarlo
+    if(window.location.hash) history.replaceState(null, '', window.location.pathname);
+
     const email  = session.user.email;
     const nombre = session.user.user_metadata?.full_name || email.split('@')[0];
     const avatar = session.user.user_metadata?.avatar_url || '';
@@ -647,8 +650,9 @@
   async function doLogout(){
     if(_pollingInterval) clearInterval(_pollingInterval);
     localStorage.removeItem('violeta_logged_vendor');
-    // Cerrar también la sesión de Google/Supabase OAuth
     if(_sbClient) await _sbClient.auth.signOut().catch(()=>{});
+    // Limpiar el hash de la URL antes de recargar para evitar doble ##
+    history.replaceState(null, '', window.location.pathname);
     location.reload();
   }
 
