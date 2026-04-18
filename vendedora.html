@@ -644,7 +644,13 @@
     iniciarPollingPedidos();
   }
 
-  function doLogout(){if(_pollingInterval)clearInterval(_pollingInterval);localStorage.removeItem('violeta_logged_vendor');location.reload();}
+  async function doLogout(){
+    if(_pollingInterval) clearInterval(_pollingInterval);
+    localStorage.removeItem('violeta_logged_vendor');
+    // Cerrar también la sesión de Google/Supabase OAuth
+    if(_sbClient) await _sbClient.auth.signOut().catch(()=>{});
+    location.reload();
+  }
 
   function copiarMiLink(){
     if(!currentUser) return;
