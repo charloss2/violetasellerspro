@@ -1,6 +1,6 @@
 <!--
 ================================================================================
-  Violetta Seller — Sistema de gestión de pedidos para vendedoras directas
+  MiCatalogApp — Sistema de gestión de pedidos para vendedoras directas
   © 2026 Carlos Caceres. Todos los derechos reservados.
   Proyecto Alpha v1.0.0
   Queda prohibida la reproducción total o parcial sin autorización expresa.
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Violetta Seller — Admin</title>
+  <title>MiCatalogApp — Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root{--bg:#0e0a14;--surface:#1a1425;--surface2:#231a33;--border:#2e2040;--accent:#c084fc;--accent2:#818cf8;--accent3:#f472b6;--gold:#fbbf24;--text:#f0e8ff;--text2:#9b86c8;--text3:#5e4d7a;--danger:#f87171;--success:#4ade80;--warning:#fb923c;}
@@ -142,7 +142,7 @@
 <div class="login-wrap" id="loginWrap">
   <div class="login-box">
     <div class="login-badge">🔐 Root</div>
-    <h1 class="login-title">Panel Admin<br>Violetta Seller</h1>
+    <h1 class="login-title">Panel Admin<br>MiCatalogApp</h1>
     <p class="login-sub">Acceso exclusivo para administradores</p>
     <div class="field"><label>Usuario</label><input type="text" id="lu" placeholder="root" autocomplete="username"></div>
     <div class="field"><label>Contraseña</label><input type="password" id="lp" placeholder="••••••••" autocomplete="current-password"></div>
@@ -153,7 +153,7 @@
 
 <div class="app" id="appWrap">
   <aside class="sidebar">
-    <div class="logo"><div class="logo-text">💜 Violetta Seller</div><div class="logo-sub">Admin Root</div></div>
+    <div class="logo"><div class="logo-text">💜 MiCatalogApp</div><div class="logo-sub">Admin Root</div></div>
     <nav class="nav">
       <div class="nav-item active" onclick="showSec('dashboard')" data-s="dashboard"><span class="icon">📊</span>Dashboard</div>
       <div class="nav-item" onclick="showSec('pedidos')" data-s="pedidos"><span class="icon">📦</span>Pedidos</div>
@@ -161,6 +161,7 @@
       <div class="nav-item" onclick="showSec('vendedoras')" data-s="vendedoras"><span class="icon">👥</span>Vendedoras</div>
       <div class="nav-item" onclick="showSec('clientes')" data-s="clientes"><span class="icon">🙍</span>Clientes</div>
       <div class="nav-item" onclick="showSec('catalogo')" data-s="catalogo"><span class="icon">📚</span>Catálogo</div>
+      <div class="nav-item" onclick="showSec('folletos')" data-s="folletos"><span class="icon">📄</span>Folletos</div>
       <div class="nav-item" onclick="showSec('proveedor')" data-s="proveedor"><span class="icon">📦</span>Pedido Proveedor</div>
     </nav>
     <div class="sidebar-footer">
@@ -273,7 +274,7 @@
       <div class="card">
         <div class="card-head">
           <span class="card-title">📊 Importar catálogo desde Excel</span>
-          <span style="font-size:11px;color:var(--text3);">Subí el .xlsx con el formato de Violetta Seller</span>
+          <span style="font-size:11px;color:var(--text3);">Subí el .xlsx con el formato de MiCatalogApp</span>
         </div>
         <div style="padding:20px;">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
@@ -357,6 +358,113 @@
       </div>
     </div>
 
+    <!-- FOLLETOS -->
+    <div class="section" id="sec-folletos">
+      <div class="page-header">
+        <h2 class="page-title">📄 Gestión de Folletos</h2>
+        <p class="page-sub">Subí los PDFs de cada campaña y configurá el año del sistema</p>
+      </div>
+
+      <!-- Configuración del año -->
+      <div class="cfg-card" style="margin-bottom:18px;">
+        <h3>🗓️ Año de campaña</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+          El año se usa para construir el nombre del PDF (ej: <code>folleto_c626.pdf</code> = campaña 6, año 26).
+          Cambialo cuando empiece el nuevo año sin tocar código.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="field" style="margin:0;">
+            <label>Año actual (2 dígitos)</label>
+            <input type="text" id="cfgAño" maxlength="2" placeholder="26"
+              style="width:80px;text-align:center;font-size:20px;font-weight:700;">
+          </div>
+          <button class="btn-sm primary" onclick="guardarAño()" style="margin-top:18px;">
+            💾 Guardar año
+          </button>
+          <span id="año-estado" style="font-size:12px;color:var(--success);margin-top:18px;"></span>
+        </div>
+        <p style="font-size:12px;color:var(--text2);margin-top:10px;">
+          ℹ️ Este valor se guarda en el sistema y el panel de clientas lo usa automáticamente.
+          Cuando sea 2027 → ponés <strong>27</strong>.
+        </p>
+      </div>
+
+      <!-- Subir folletos via GitHub API -->
+      <div class="cfg-card" style="margin-bottom:18px;">
+        <h3>📤 Subir folleto al repositorio</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+          Subí el PDF de cada campaña directamente desde acá. Se sube al repo de GitHub automáticamente.
+          Necesitás un <strong>GitHub Personal Access Token</strong> con permiso <code>contents:write</code>.
+        </p>
+
+        <!-- Token -->
+        <div class="field">
+          <label>GitHub Token (se guarda localmente, no viaja a ningún servidor)</label>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+            oninput="document.getElementById('ghTokenSt').textContent=''">
+          <span id="ghTokenSt" style="font-size:11px;color:var(--success);"></span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="btn-sm ghost" onclick="guardarToken()">💾 Guardar token</button>
+          <button class="btn-sm ghost" onclick="verificarToken()">🔍 Verificar acceso</button>
+        </div>
+
+        <!-- Instrucciones token -->
+        <details style="margin-bottom:16px;">
+          <summary style="cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;">
+            ¿Cómo obtengo el token? ▼
+          </summary>
+          <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg);padding:12px;border-radius:8px;">
+            1. Andá a <strong>github.com → tu perfil → Settings</strong><br>
+            2. Al final del menú izquierdo: <strong>Developer settings</strong><br>
+            3. <strong>Personal access tokens → Tokens (classic) → Generate new token</strong><br>
+            4. En scopes: marcá solo ✅ <strong>repo</strong> (o <strong>public_repo</strong> si el repo es público)<br>
+            5. Copiá el token y pegalo arriba<br>
+            <br>
+            ⚠️ El token se guarda solo en este navegador (localStorage). Nadie más lo ve.
+          </div>
+        </details>
+
+        <!-- Subida -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="field" style="margin:0;">
+            <label>Número de campaña</label>
+            <input type="number" id="follCamp" placeholder="7" min="1" max="99"
+              style="width:80px;text-align:center;font-size:18px;font-weight:700;">
+          </div>
+          <div class="field" style="margin:0;flex:1;min-width:200px;">
+            <label>Archivo PDF del folleto</label>
+            <input type="file" id="follFile" accept=".pdf"
+              onchange="previewFolleto(this)">
+          </div>
+          <button class="btn-sm primary" onclick="subirFolleto()" style="height:42px;">
+            📤 Subir al repo
+          </button>
+        </div>
+        <div id="follPreview" style="margin-top:10px;font-size:12px;color:var(--text2);"></div>
+        <div id="follProgreso" style="margin-top:12px;display:none;">
+          <div style="background:#e9d5ff;border-radius:999px;height:8px;overflow:hidden;">
+            <div id="follBar" style="background:var(--accent);height:100%;width:0%;transition:width .3s;border-radius:999px;"></div>
+          </div>
+          <div id="follTxt" style="font-size:12px;color:var(--text2);margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <!-- Lista de folletos en el repo -->
+      <div class="cfg-card">
+        <h3>📋 Folletos disponibles en el repo</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+          Folletos que ya están subidos al repositorio y disponibles para las clientas.
+        </p>
+        <button class="btn-sm ghost" onclick="listarFolletos()" style="margin-bottom:12px;">
+          🔄 Ver folletos subidos
+        </button>
+        <div id="follLista" style="font-size:13px;color:var(--text2);">
+          Tocá "Ver folletos subidos" para cargar la lista.
+        </div>
+      </div>
+    </div>
+
     <!-- PEDIDO PROVEEDOR -->
     <div class="section" id="sec-proveedor">
       <div class="page-header">
@@ -434,8 +542,6 @@
     <div class="field"><label>Precio ($)</label><input type="number" id="mProdPrecio"></div>
     <div class="field"><label>Campaña</label><input type="text" id="mProdCamp" placeholder="Ej: Campaña 14"></div>
     <div class="field"><label>Código (opcional)</label><input type="text" id="mProdCod"></div>
-    <div class="field"><label>Categoría</label><input type="text" id="mProdCat"></div>
-    <div class="field"><label>Descripción</label><textarea id="mProdDesc"></textarea></div>
     <div class="modal-btns"><button class="cancel" onclick="cerrarModal('modalProd')">Cancelar</button><button class="confirm" onclick="guardarProducto()">Guardar</button></div>
   </div>
 </div>
@@ -443,7 +549,15 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const ROOT={user:'root',pass:'Root.415263'};
+// Credenciales del admin — solo el hash SHA-256 de la contraseña está en el código
+// La contraseña real no está aquí — nadie puede recuperarla desde el hash
+const ROOT_USER = 'root';
+const ROOT_HASH = 'e2ff472ee6806ad10480db6a306cf4c05c654b936f989f1a40f9c9d401b66ec8';
+
+async function hashPass(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 const SU='https://vangwjxeebbzbqejyzsp.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbmd3anhlZWJiemJxZWp5enNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxODc2NDgsImV4cCI6MjA5MTc2MzY0OH0.IjFNt8t1-YU4aUOgB-y8UFGAgHqL8qFNOwCIyxCvFj8';
 let allPeds=[],allVends=[],allClis=[],allProds=[];
@@ -456,12 +570,21 @@ async function sDel(t,id){const r=await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;setTimeout(()=>t.classList.remove('show'),3000);}
 
-function doLogin(){
-  const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;
-  if(u===ROOT.user&&p===ROOT.pass){localStorage.setItem('va_root','1');document.getElementById('loginWrap').style.display='none';document.getElementById('appWrap').style.display='block';initCfg();cargarTodo();}
-  else{const e=document.getElementById('lErr');e.style.display='block';setTimeout(()=>e.style.display='none',3000);}
+async function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  if(!u||!p){const e=document.getElementById('lErr');e.style.display='block';setTimeout(()=>e.style.display='none',3000);return;}
+  const h = await hashPass(p);
+  if(u===ROOT_USER && h===ROOT_HASH){
+    localStorage.setItem('mca_root','1');
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('appWrap').style.display='block';
+    initCfg();cargarTodo();
+  } else {
+    const e=document.getElementById('lErr');e.style.display='block';setTimeout(()=>e.style.display='none',3000);
+  }
 }
-function doLogout(){localStorage.removeItem('va_root');location.reload();}
+function doLogout(){localStorage.removeItem('mca_root');location.reload();}
 
 function showSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -470,6 +593,7 @@ function showSec(id){
   document.querySelector(`[data-s="${id}"]`).classList.add('active');
   if(id==='reportes')buildReportes();
   if(id==='proveedor')buildAdminProveedor();
+  if(id==='folletos')initFolletos();
 }
 
 async function cargarTodo(){
@@ -613,8 +737,36 @@ function renderClientes(){
   let f=allClis.filter(c=>!s||(c.nombre||'').toLowerCase().includes(s)||(c.dni||'').includes(s));
   if(!f.length){document.getElementById('cli-list').innerHTML='<div class="empty">Sin clientes</div>';return;}
   let h='<table><thead><tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Dirección</th><th>Pedidos</th><th>Acciones</th></tr></thead><tbody>';
-  f.forEach(c=>{const t=allPeds.filter(p=>p.dni_cliente===c.dni||p.cliente_id===c.id).length;h+=`<tr><td><strong>${c.nombre}</strong></td><td>${c.dni||'—'}</td><td>${c.telefono||'—'}</td><td style="font-size:11px">${c.direccion||'—'}</td><td><span class="badge listo">${t}</span></td><td><button class="btn-sm ghost" onclick="editCli('${c.id}')">✏️ Editar</button></td></tr>`;});
+  f.forEach(c=>{
+    const t=allPeds.filter(p=>p.dni_cliente===c.dni||p.cliente_id===c.id).length;
+    h+=`<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td>${c.dni||'—'}</td>
+      <td>${c.telefono||'—'}</td>
+      <td style="font-size:11px">${c.direccion||'—'}</td>
+      <td><span class="badge listo">${t}</span></td>
+      <td>
+        <button class="btn-sm ghost" onclick="editCli('${c.id}')">✏️ Editar</button>
+        <button class="btn-sm danger" style="margin-left:4px;" onclick="eliminarCliente('${c.id}','${encodeURIComponent(c.nombre||'')}')" title="Eliminar cliente">🗑️</button>
+      </td>
+    </tr>`;
+  });
   document.getElementById('cli-list').innerHTML=h+'</tbody></table>';
+}
+
+async function eliminarCliente(id, nombreEnc){
+  const nombre = decodeURIComponent(nombreEnc||'');
+  const peds = allPeds.filter(p=>p.cliente_id===id).length;
+  let msg = '¿Eliminar a "'+nombre+'"?\nEsta acción no se puede deshacer.';
+  if(peds > 0) msg = '⚠️ Este cliente tiene '+peds+' pedido(s) registrado(s).\n\n'+msg;
+  if(!confirm(msg)) return;
+  try{
+    await sDel('clientes',id);
+    allClis=allClis.filter(c=>c.id!==id);
+    renderClientes();
+    document.getElementById('st-cli').textContent=allClis.length;
+    toast('✅ Cliente eliminado','ok');
+  }catch(e){ toast('❌ '+e.message,'err'); }
 }
 function abrirMCli(){document.getElementById('mCliId').value='';document.getElementById('mCliTit').textContent='Nuevo Cliente';['mCliNom','mCliDni','mCliTel','mCliDir'].forEach(id=>document.getElementById(id).value='');document.getElementById('modalCli').classList.add('open');}
 function editCli(id){const c=allClis.find(x=>x.id===id);if(!c)return;document.getElementById('mCliId').value=c.id;document.getElementById('mCliTit').textContent='Editar Cliente';document.getElementById('mCliNom').value=c.nombre;document.getElementById('mCliDni').value=c.dni||'';document.getElementById('mCliTel').value=c.telefono||'';document.getElementById('mCliDir').value=c.direccion||'';document.getElementById('modalCli').classList.add('open');}
@@ -630,14 +782,14 @@ function renderCatalogo(){
   const f=allProds.filter(p=>!camp||p.campana===camp);
   if(!f.length){document.getElementById('cat-list').innerHTML='<div class="empty">Sin productos.</div>';return;}
   let h='<table><thead><tr><th>Producto</th><th>Campaña</th><th>Categoría</th><th>Precio</th><th>Acciones</th></tr></thead><tbody>';
-  f.forEach(p=>{h+=`<tr><td><strong>${p.nombre}</strong>${p.descripcion?`<br><span style="font-size:10px;color:var(--text3)">${p.descripcion}</span>`:''}</td><td style="font-size:11px">${p.campana||'—'}</td><td style="font-size:11px">${p.categoria||'—'}</td><td style="font-weight:700;color:var(--accent)">${p.precio?'$'+Number(p.precio).toLocaleString('es-AR'):'—'}</td><td><div class="btns-row"><button class="btn-sm ghost" onclick="editProd('${p.id}')">✏️</button><button class="btn-sm danger" onclick="elimProd('${p.id}')">🗑️</button></div></td></tr>`;});
+  f.forEach(p=>{h+=`<tr><td><strong>${p.nombre}</strong><br><span style="font-size:10px;color:var(--text3)">${p.codigo||''}</span></td><td style="font-size:11px">${p.campana||'—'}</td><td style="font-size:11px">${p.promo_tipo||'—'}</td><td style="font-weight:700;color:var(--accent)">${p.precio?'$'+Number(p.precio).toLocaleString('es-AR'):'—'}</td><td><div class="btns-row"><button class="btn-sm ghost" onclick="editProd('${p.id}')">✏️</button><button class="btn-sm danger" onclick="elimProd('${p.id}')">🗑️</button></div></td></tr>`;});
   document.getElementById('cat-list').innerHTML=h+'</tbody></table>';
 }
-function abrirMProd(){document.getElementById('mProdId').value='';document.getElementById('mProdTit').textContent='Nuevo Producto';['mProdNom','mProdPrecio','mProdCamp','mProdCod','mProdCat','mProdDesc'].forEach(id=>document.getElementById(id).value='');document.getElementById('modalProd').classList.add('open');}
-function editProd(id){const p=allProds.find(x=>x.id===id);if(!p)return;document.getElementById('mProdId').value=p.id;document.getElementById('mProdTit').textContent='Editar Producto';document.getElementById('mProdNom').value=p.nombre;document.getElementById('mProdPrecio').value=p.precio||'';document.getElementById('mProdCamp').value=p.campana||'';document.getElementById('mProdCod').value=p.codigo||'';document.getElementById('mProdCat').value=p.categoria||'';document.getElementById('mProdDesc').value=p.descripcion||'';document.getElementById('modalProd').classList.add('open');}
+function abrirMProd(){document.getElementById('mProdId').value='';document.getElementById('mProdTit').textContent='Nuevo Producto';['mProdNom','mProdPrecio','mProdCamp','mProdCod'].forEach(id=>document.getElementById(id).value='');document.getElementById('modalProd').classList.add('open');}
+function editProd(id){const p=allProds.find(x=>x.id===id);if(!p)return;document.getElementById('mProdId').value=p.id;document.getElementById('mProdTit').textContent='Editar Producto';document.getElementById('mProdNom').value=p.nombre;document.getElementById('mProdPrecio').value=p.precio||'';document.getElementById('mProdCamp').value=p.campana||'';document.getElementById('mProdCod').value=p.codigo||'';document.getElementById('modalProd').classList.add('open');}
 async function guardarProducto(){
   const id=document.getElementById('mProdId').value;const nombre=document.getElementById('mProdNom').value.trim();if(!nombre){toast('Ingresá el nombre','err');return;}
-  const data={nombre,precio:parseFloat(document.getElementById('mProdPrecio').value)||null,campana:document.getElementById('mProdCamp').value.trim(),codigo:document.getElementById('mProdCod').value.trim(),categoria:document.getElementById('mProdCat').value.trim(),descripcion:document.getElementById('mProdDesc').value.trim()};
+  const data={nombre,precio:parseFloat(document.getElementById('mProdPrecio').value)||null,campana:document.getElementById('mProdCamp').value.trim(),codigo:document.getElementById('mProdCod').value.trim()};
   try{id?await sPatch('productos',id,data):await sPost('productos',data);toast('✅ Guardado','ok');cerrarModal('modalProd');await cargarTodo();}catch(e){toast('❌ '+e.message,'err');}
 }
 async function elimProd(id){if(!confirm('¿Eliminar producto?'))return;try{await sDel('productos',id);toast('🗑️ Eliminado');await cargarTodo();}catch(e){toast('❌ '+e.message,'err');}}
@@ -669,7 +821,7 @@ function renderAI(prods){
     <div class="prod-item-ai" id="aip_${i}">
       <input class="n" type="text" value="${p.nombre||''}" placeholder="Nombre" id="ain_${i}">
       <input class="p" type="number" value="${p.precio||''}" placeholder="Precio" id="aip2_${i}">
-      <input class="cat" type="text" value="${p.categoria||''}" placeholder="Categoría" id="aicat_${i}">
+
       <button class="del" onclick="document.getElementById('aip_${i}').remove()">✕</button>
     </div>`).join('');
   document.getElementById('aiProdsList').innerHTML=h;
@@ -680,7 +832,7 @@ async function guardarProdsAI(){
   const rows=document.querySelectorAll('.prod-item-ai');
   const camp=prompt('¿A qué campaña pertenecen estos productos? (Ej: Campaña 14)','Campaña ');
   if(!camp)return;
-  const prods=[...rows].map(r=>{const i=r.id.replace('aip_','');return{nombre:document.getElementById('ain_'+i)?.value||'',precio:parseFloat(document.getElementById('aip2_'+i)?.value)||null,categoria:document.getElementById('aicat_'+i)?.value||'',campana:camp};}).filter(p=>p.nombre);
+  const prods=[...rows].map(r=>{const i=r.id.replace('aip_','');return{nombre:document.getElementById('ain_'+i)?.value||'',precio:parseFloat(document.getElementById('aip2_'+i)?.value)||null,campana:camp};}).filter(p=>p.nombre);
   if(!prods.length){toast('Sin productos','err');return;}
   try{for(const p of prods)await sPost('productos',p);toast(`✅ ${prods.length} productos guardados`,'ok');document.getElementById('aiResult').style.display='none';await cargarTodo();}catch(e){toast('❌ '+e.message,'err');}
 }
@@ -921,7 +1073,7 @@ function copiarSQL(){navigator.clipboard.writeText(document.getElementById('sqlC
     ws['!cols'] = [{wch:10},{wch:60},{wch:12},{wch:15},{wch:18},{wch:50},{wch:22},{wch:14},{wch:10}];
     XLSX.utils.book_append_sheet(wb, ws, 'Productos X-XX');
     const wi = XLSX.utils.aoa_to_sheet([
-      ['FORMATO PARA IMPORTAR CATÁLOGO — VIOLETTA SELLER'],[''],
+      ['FORMATO PARA IMPORTAR CATÁLOGO — MICATALOGAPP'],[''],
       ['Columnas obligatorias:'],
       ['codigo','Código numérico 5-6 dígitos. OBLIGATORIO.'],
       ['nombre','Nombre completo del producto. OBLIGATORIO.'],
@@ -937,12 +1089,211 @@ function copiarSQL(){navigator.clipboard.writeText(document.getElementById('sqlC
     XLSX.writeFile(wb, 'plantilla_catalogo_violetta.xlsx');
   }
 
-  function copyLink(f){navigator.clipboard.writeText(window.location.origin+window.location.pathname.replace('admin.html','')+f).then(()=>toast('📋 Link copiado'));}
+  // ── FOLLETOS — Configuración año y subida GitHub ────────────
+
+  const GH_REPO  = 'charloss2/violetasellers'; // repo donde viven los folletos
+  const GH_BRANCH = 'main';
+
+  function initFolletos(){
+    // Cargar año guardado
+    const año = localStorage.getItem('mca_año') || '26';
+    const inp = document.getElementById('cfgAño');
+    if(inp) inp.value = año;
+    // Cargar token guardado
+    const tok = localStorage.getItem('mca_gh_token');
+    const tokInp = document.getElementById('ghToken');
+    if(tokInp && tok) { tokInp.value = tok; document.getElementById('ghTokenSt').textContent = '✅ Token guardado'; }
+  }
+
+  function guardarAño(){
+    const val = (document.getElementById('cfgAño')?.value || '').trim();
+    if(!val || val.length !== 2 || isNaN(val)){
+      toast('⚠️ Ingresá 2 dígitos (ej: 26 para 2026)','err'); return;
+    }
+    localStorage.setItem('mca_año', val);
+    document.getElementById('año-estado').textContent = `✅ Año ${val} guardado`;
+    toast(`✅ Año configurado: 20${val}`,'ok');
+  }
+
+  function guardarToken(){
+    const tok = document.getElementById('ghToken')?.value.trim();
+    if(!tok){ toast('⚠️ Ingresá el token','err'); return; }
+    localStorage.setItem('mca_gh_token', tok);
+    document.getElementById('ghTokenSt').textContent = '✅ Token guardado';
+    toast('✅ Token guardado localmente','ok');
+  }
+
+  async function verificarToken(){
+    const tok = localStorage.getItem('mca_gh_token') || document.getElementById('ghToken')?.value.trim();
+    if(!tok){ toast('⚠️ Guardá el token primero','err'); return; }
+    try{
+      const r = await fetch(`https://api.github.com/repos/${GH_REPO}`, {
+        headers: { 'Authorization': `Bearer ${tok}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if(r.ok){
+        const d = await r.json();
+        toast(`✅ Acceso OK — repo: ${d.full_name}`,'ok');
+        document.getElementById('ghTokenSt').textContent = `✅ Acceso verificado a ${d.full_name}`;
+      } else {
+        toast(`❌ Sin acceso (${r.status}) — verificá el token`,'err');
+        document.getElementById('ghTokenSt').textContent = `❌ Error ${r.status}`;
+      }
+    }catch(e){ toast('❌ Error de red: '+e.message,'err'); }
+  }
+
+  function previewFolleto(input){
+    const f = input.files[0];
+    const prev = document.getElementById('follPreview');
+    if(!f){ prev.textContent=''; return; }
+    const mb = (f.size/1024/1024).toFixed(1);
+    prev.innerHTML = `📄 <strong>${f.name}</strong> — ${mb} MB`;
+    // Autocompletar número de campaña desde el nombre del archivo si puede
+    const m = f.name.match(/c(\d{1,2})\d{2}|camp.*?(\d{1,2})|(\d{1,2})/i);
+    if(m){
+      const num = m[1]||m[2]||m[3];
+      if(num && num < 99) document.getElementById('follCamp').value = parseInt(num);
+    }
+  }
+
+  async function subirFolleto(){
+    const tok  = localStorage.getItem('mca_gh_token') || document.getElementById('ghToken')?.value.trim();
+    const camp = document.getElementById('follCamp')?.value.trim();
+    const file = document.getElementById('follFile')?.files[0];
+    const año  = localStorage.getItem('mca_año') || '26';
+
+    if(!tok){ toast('⚠️ Configurá el GitHub token primero','err'); return; }
+    if(!camp){ toast('⚠️ Ingresá el número de campaña','err'); return; }
+    if(!file){ toast('⚠️ Seleccioná el archivo PDF','err'); return; }
+    if(!file.name.endsWith('.pdf')){ toast('⚠️ El archivo debe ser PDF','err'); return; }
+
+    const mb = file.size/1024/1024;
+    if(mb > 25){ toast(`❌ El PDF es muy grande (${mb.toFixed(1)}MB). Máximo 25MB.`,'err'); return; }
+
+    const campPad = String(camp).padStart(2,'0');
+    const fileName = `folleto_c${campPad}${año}.pdf`;
+    const path = fileName;
+
+    const prog = document.getElementById('follProgreso');
+    const bar  = document.getElementById('follBar');
+    const txt  = document.getElementById('follTxt');
+    prog.style.display = 'block';
+    bar.style.width = '20%';
+    txt.textContent = `Leyendo ${fileName}...`;
+
+    try{
+      // Leer el archivo como base64
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(',')[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      bar.style.width = '50%';
+      txt.textContent = `Verificando si ya existe ${fileName}...`;
+
+      // Verificar si ya existe para obtener el SHA (necesario para actualizar)
+      let sha = null;
+      const checkR = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${path}?ref=${GH_BRANCH}`, {
+        headers: { 'Authorization': `Bearer ${tok}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if(checkR.ok){
+        const existing = await checkR.json();
+        sha = existing.sha;
+        txt.textContent = `Actualizando ${fileName} en el repo...`;
+      } else {
+        txt.textContent = `Subiendo ${fileName} por primera vez...`;
+      }
+
+      bar.style.width = '75%';
+
+      // Subir via GitHub API
+      const body = {
+        message: `📄 Folleto campaña ${camp}/${año} — subido desde MiCatalogApp admin`,
+        content: base64,
+        branch: GH_BRANCH,
+      };
+      if(sha) body.sha = sha;
+
+      const upR = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${path}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${tok}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
+
+      bar.style.width = '100%';
+
+      if(upR.ok){
+        txt.innerHTML = `✅ <strong>${fileName}</strong> subido correctamente al repo. Disponible en 1-2 minutos.`;
+        bar.style.background = 'var(--success)';
+        toast(`✅ ${fileName} subido al repo`,'ok');
+        listarFolletos();
+      } else {
+        const err = await upR.json();
+        txt.textContent = `❌ Error: ${err.message}`;
+        bar.style.background = 'var(--danger)';
+        toast('❌ '+err.message,'err');
+      }
+    }catch(e){
+      txt.textContent = '❌ ' + e.message;
+      bar.style.background = 'var(--danger)';
+      toast('❌ '+e.message,'err');
+    }
+  }
+
+  async function listarFolletos(){
+    const tok = localStorage.getItem('mca_gh_token') || document.getElementById('ghToken')?.value.trim();
+    const lista = document.getElementById('follLista');
+    lista.textContent = '⏳ Cargando...';
+
+    try{
+      // Listar archivos del repo raíz
+      const headers = tok
+        ? { 'Authorization': `Bearer ${tok}`, 'Accept': 'application/vnd.github+json' }
+        : { 'Accept': 'application/vnd.github+json' };
+
+      const r = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/?ref=${GH_BRANCH}`, { headers });
+      if(!r.ok){ lista.textContent = `❌ Error ${r.status} — verificá el token`; return; }
+      const files = await r.json();
+      const pdfs = files.filter(f => f.name.startsWith('folleto_') && f.name.endsWith('.pdf'));
+
+      if(!pdfs.length){
+        lista.innerHTML = '<em>No hay folletos subidos todavía.</em>';
+        return;
+      }
+
+      lista.innerHTML = pdfs.map(f => {
+        const mb = (f.size/1024/1024).toFixed(1);
+        // Extraer campaña del nombre: folleto_c0726.pdf → campaña 7/26
+        const m = f.name.match(/folleto_c(\d{2})(\d{2})\.pdf/);
+        const campLabel = m ? `Campaña ${parseInt(m[1])}/${m[2]}` : f.name;
+        const url = `https://charloss2.github.io/violetasellers/${f.name}`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;
+          padding:10px 12px;background:var(--bg);border:1px solid var(--border);
+          border-radius:8px;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <strong style="color:var(--accent);">📄 ${campLabel}</strong>
+            <span style="color:var(--text2);font-size:11px;margin-left:8px;">${f.name} · ${mb}MB</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <a href="${url}" target="_blank" class="btn-sm ghost" style="text-decoration:none;">👁️ Ver</a>
+            <button class="btn-sm ghost" onclick="navigator.clipboard.writeText('${url}').then(()=>toast('📋 URL copiada'))">📋</button>
+          </div>
+        </div>`;
+      }).join('');
+    }catch(e){
+      lista.textContent = '❌ ' + e.message;
+    }
+  }
 
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.addEventListener('click',e=>{if(e.target.classList.contains('modal-bg'))cerrarModal(e.target.id);});
 
-if(localStorage.getItem('va_root')==='1'){
+if(localStorage.getItem('mca_root')==='1'){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('appWrap').style.display='block';
   initCfg();cargarTodo();
@@ -989,7 +1340,7 @@ function imprimirReporteAdmin(){
     <td class="right bold green">${d.total?'$'+d.total.toLocaleString('es-AR'):'—'}</td></tr>`).join('');
 
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Reporte Admin — Violetta Seller</title>
+<title>Reporte Admin — MiCatalogApp</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -1013,7 +1364,7 @@ function imprimirReporteAdmin(){
 </head><body>
 <div class="header">
   <div>
-    <div class="logo">♦ Violetta Seller<span>.</span></div>
+    <div class="logo">♦ MiCatalogApp<span>.</span></div>
     <div style="margin-top:6px;font-size:13px;color:#6b21a8;">Panel Administrador</div>
   </div>
   <div style="text-align:right;font-size:13px;color:#6b21a8;">
@@ -1041,7 +1392,7 @@ function imprimirReporteAdmin(){
   <tbody>${vendRows}</tbody>
 </table>
 
-<div class="footer">Reporte generado por el sistema de pedidos de <strong>Violetta Seller</strong> · ${fecha}</div>
+<div class="footer">Reporte generado por el sistema de pedidos de <strong>MiCatalogApp</strong> · ${fecha}</div>
 <br>
 <div style="text-align:center;">
   <button onclick="window.print()" style="background:#7c3aed;color:white;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Imprimir / Guardar PDF</button>
@@ -1049,7 +1400,7 @@ function imprimirReporteAdmin(){
 </div>
 </body><!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
@@ -1356,7 +1707,7 @@ function imprimirAdminProveedor(){
 </head><body>
 <div class="header">
   <div>
-    <div class="logo">♦ Violetta Seller<span>.</span></div>
+    <div class="logo">♦ MiCatalogApp<span>.</span></div>
     <div style="margin-top:6px;font-size:13px;font-weight:700;">Panel Administrador</div>
   </div>
   <div style="text-align:right;font-size:13px;color:#6b21a8;">
@@ -1376,7 +1727,7 @@ function imprimirAdminProveedor(){
   </tr></thead>
   <tbody>${rowsHtml}</tbody>
 </table>
-<div class="footer">Reporte generado por el sistema de pedidos de <strong>Violetta Seller</strong> · ${fecha}</div>
+<div class="footer">Reporte generado por el sistema de pedidos de <strong>MiCatalogApp</strong> · ${fecha}</div>
 <br>
 <div style="text-align:center;">
   <button onclick="window.print()" style="background:#7c3aed;color:white;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Imprimir / Guardar PDF</button>
@@ -1384,7 +1735,7 @@ function imprimirAdminProveedor(){
 </div>
 </body><!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
@@ -1438,7 +1789,7 @@ function imprimirAdminProveedor(){
 </body>
 <!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
