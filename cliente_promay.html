@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Violetta — Tu Pedido</title>
+  <title>MiCatalogApp — Tu Pedido</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
@@ -318,7 +318,7 @@
 <div class="screen active" id="scr-login">
   <div class="login-box" style="margin:auto;">
     <div class="login-logo">💜</div>
-    <div class="login-brand">Violetta</div>
+    <div class="login-brand">MiCatalogApp</div>
     <div class="login-sub">Para comenzar,<br>escribí tu número de documento</div>
     <label class="login-label">Tu DNI (sin puntos)</label>
     <input type="number" class="login-input" id="dniInput"
@@ -359,7 +359,7 @@
     <div class="pm-header-marca">
       <span style="font-size:26px;">💜</span>
       <div>
-        <div class="pm-header-logo">Violetta</div>
+        <div class="pm-header-logo">MiCatalogApp</div>
         <div class="pm-header-quien" id="hdr-vend">Cargando...</div>
       </div>
     </div>
@@ -520,7 +520,8 @@
 
   const urlParams      = new URLSearchParams(window.location.search);
   const vendedoraParam = urlParams.get('v') || null;
-  const campanaParam   = urlParams.get('c') || null;
+  const _campRaw       = urlParams.get('c') || null;
+  const campanaParam   = _campRaw ? (String(_campRaw).match(/\d+/)?.[0] || null) : null;
 
   let currentCliente        = null;
   let vendedoraSeleccionada = null;
@@ -549,7 +550,7 @@
         const [nuevo] = await sPost('clientes', {dni, nombre:'Cliente '+dni, activo:true});
         currentCliente = nuevo;
       }
-      localStorage.setItem('violeta_promay', JSON.stringify(currentCliente));
+      localStorage.setItem('micatalog_promay', JSON.stringify(currentCliente));
       const tieneNombre = currentCliente.nombre && !currentCliente.nombre.startsWith('Cliente ');
       if(tieneNombre){
         mostrarBienvenida();
@@ -772,7 +773,7 @@
       if(!rows.length) return;
       const cli = rows[0];
       currentCliente = cli;
-      localStorage.setItem('violeta_promay', JSON.stringify(cli));
+      localStorage.setItem('micatalog_promay', JSON.stringify(cli));
       if(cli.nombre && !cli.nombre.startsWith('Cliente '))
         document.getElementById('m-nombre').value = cli.nombre;
       if(cli.telefono) document.getElementById('m-tel').value = cli.telefono;
@@ -865,7 +866,7 @@
             method:'PATCH', headers:{...H(),'Prefer':'return=representation'}, body:JSON.stringify(upd)
           }).catch(()=>{});
           currentCliente = {...currentCliente, ...upd};
-          localStorage.setItem('violeta_promay', JSON.stringify(currentCliente));
+          localStorage.setItem('micatalog_promay', JSON.stringify(currentCliente));
         }
       }
 
@@ -949,7 +950,7 @@
 
   function cerrarSesion(){
     currentCliente = null;
-    localStorage.removeItem('violeta_promay');
+    localStorage.removeItem('micatalog_promay');
     carrito = {};
     document.getElementById('dniInput').value = '';
     showScreen('login');
@@ -957,7 +958,7 @@
 
   // ── INIT ───────────────────────────────────────────────────
   // Siempre pedir DNI al cargar
-  localStorage.removeItem('violeta_promay');
+  localStorage.removeItem('micatalog_promay');
 
   document.addEventListener('keypress', e => {
     if(e.key === 'Enter' && document.getElementById('scr-login').classList.contains('active')) loginDNI();
