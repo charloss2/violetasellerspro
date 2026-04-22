@@ -1,6 +1,6 @@
 <!--
 ================================================================================
-  Violetta Seller — Sistema de gestión de pedidos para vendedoras directas
+  MiCatalogApp — Sistema de gestión de pedidos para vendedoras directas
   © 2026 Carlos Caceres. Todos los derechos reservados.
   Proyecto Alpha v1.0.0
   Queda prohibida la reproducción total o parcial sin autorización expresa.
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mis Violetta Seller</title>
+  <title>Mis MiCatalogApp</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <!-- Supabase JS SDK para Google OAuth -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -165,7 +165,7 @@
 <div class="login-wrap" id="loginWrap">
   <div class="login-box">
     <div class="login-emoji">💜</div>
-    <h1 class="login-title">Violetta Seller</h1>
+    <h1 class="login-title">MiCatalogApp</h1>
     <p class="login-sub">Panel de vendedoras</p>
 
     <!-- Google OAuth -->
@@ -196,7 +196,7 @@
     <div class="header-left">
       <span style="font-size:26px">💜</span>
       <div>
-        <div class="header-logo">Violetta Seller</div>
+        <div class="header-logo">MiCatalogApp</div>
         <div class="header-user">Hola, <span id="welcomeName">vendedora</span> 👋</div>
       </div>
     </div>
@@ -232,6 +232,9 @@
       </div>
       <div class="filters-bar">
         <input type="text" id="buscar" placeholder="🔍 Buscar nombre o teléfono..." oninput="filtrar()">
+        <select id="filtroCampana" onchange="filtrar()" style="font-weight:700;color:var(--accent);">
+          <option value="">Todas las campañas</option>
+        </select>
         <select id="filtroEstado" onchange="filtrar()">
           <option value="">Todos los estados</option>
           <option value="pendiente">⏳ Pendiente</option>
@@ -632,7 +635,7 @@
 
   function setLoggedIn(user){
     currentUser=user;
-    localStorage.setItem('violeta_logged_vendor',JSON.stringify(user));
+    localStorage.setItem('micatalog_logged_vendor',JSON.stringify(user));
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('appWrap').style.display='block';
     document.getElementById('welcomeName').textContent=user.nombre||user.username;
@@ -649,7 +652,7 @@
 
   async function doLogout(){
     if(_pollingInterval) clearInterval(_pollingInterval);
-    localStorage.removeItem('violeta_logged_vendor');
+    localStorage.removeItem('micatalog_logged_vendor');
     if(_sbClient) await _sbClient.auth.signOut().catch(()=>{});
     // Limpiar el hash de la URL antes de recargar para evitar doble ##
     history.replaceState(null, '', window.location.pathname);
@@ -659,10 +662,28 @@
   function copiarMiLink(){
     if(!currentUser) return;
     const username = currentUser.username || '';
-    const campSel = document.getElementById('provFiltCamp');
-    let camp = '';
-    if(campSel && campSel.value) camp = campSel.value.replace(/^0/,'').split('/')[0];
-    if(!camp) camp = '6';
+
+    // Obtener campañas disponibles de los pedidos
+    const campsDisp = [...new Set(misPedidos.map(p=>p.campana).filter(Boolean))].sort().reverse();
+    // También del selector de proveedor
+    const provSel = document.getElementById('provFiltCamp');
+    if(provSel && provSel.value) campsDisp.unshift(provSel.value);
+    const campsUnicas = [...new Set(campsDisp)];
+
+    // Extraer números de campaña (ej: "6/26" → "6")
+    const campNums = campsUnicas.map(c => c.replace(/^0/,'').split('/')[0]).filter(Boolean);
+    if(!campNums.length) campNums.push('6');
+    const lastCamp = campNums[0]; // la más reciente por defecto
+
+    // Si hay más de una campaña, preguntar cuál
+    let camp = lastCamp;
+    if(campNums.length > 1){
+      const opciones = campNums.map((n,i) => `${i+1}) Campaña ${n}/26`).join('\n');
+      const resp = prompt(`¿Para qué campaña querés el link?\n\n${opciones}\n\nEscribí el número de opción:`, '1');
+      if(resp === null) return; // canceló
+      const idx = parseInt(resp) - 1;
+      camp = campNums[Math.max(0, Math.min(idx, campNums.length-1))];
+    }
 
     const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
     const link = `${base}cliente.html?v=${encodeURIComponent(username)}&c=${encodeURIComponent(camp)}`;
@@ -784,6 +805,19 @@
       }));
 
       actualizarStats();
+      // Poblar selector de campaña con las disponibles, preseleccionar la última
+      const selCamp = document.getElementById('filtroCampana');
+      if(selCamp){
+        const camps = [...new Set(misPedidos.map(p=>p.campana).filter(Boolean))].sort().reverse();
+        selCamp.innerHTML = '<option value="">Todas las campañas</option>';
+        camps.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c; o.textContent = c;
+          selCamp.appendChild(o);
+        });
+        // Preseleccionar la última campaña disponible
+        if(camps.length) selCamp.value = camps[0];
+      }
       filtrar();
     }catch(e){document.getElementById('pedidos-container').innerHTML=`<div class="empty">❌ ${e.message}</div>`;}
   }
@@ -799,10 +833,11 @@
     const s=(document.getElementById('buscar')?.value||'').toLowerCase();
     const est=document.getElementById('filtroEstado')?.value||'';
     const lug=document.getElementById('filtroLugar')?.value||'';
+    const camp=document.getElementById('filtroCampana')?.value||'';
     renderPedidos(misPedidos.filter(p=>{
       const nom = (p._nombre||p.nombre_cliente||p.nombre||'').toLowerCase();
       const ms=!s||nom.includes(s)||(p.telefono||'').includes(s)||String(p.numero_pedido||'').includes(s);
-      return ms&&(!est||p.estado===est)&&(!lug||p.lugar===lug);
+      return ms&&(!est||p.estado===est)&&(!lug||p.lugar===lug)&&(!camp||p.campana===camp);
     }));
   }
 
@@ -1550,7 +1585,7 @@
     }catch(e){}
 
     const msg = [
-      '💜 *Violetta Seller*',
+      '💜 *MiCatalogApp*',
       '',
       `Hola ${ped.nombre_cliente||ped.nombre||''}! Te confirmamos el precio de tu pedido${nro} 🎉`,
       '',
@@ -1604,7 +1639,7 @@
 
     const fecha=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
     const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Pedido ${ped.numero_pedido?'#'+ped.numero_pedido+' — ':''}${ped.nombre_cliente||ped.nombre||''} — Violetta Seller</title>
+<title>Pedido ${ped.numero_pedido?'#'+ped.numero_pedido+' — ':''}${ped.nombre_cliente||ped.nombre||''} — MiCatalogApp</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -1636,7 +1671,7 @@
 </head><body>
 <div class="header">
   <div>
-    <div class="logo">♦ Violetta Seller<span>.</span></div>
+    <div class="logo">♦ MiCatalogApp<span>.</span></div>
     <div style="font-size:12px;color:#6b21a8;margin-top:4px;">violettaseller.com.ar</div>
     <div style="margin-top:8px;font-size:13px;font-weight:700;">Vendedora: ${vend}</div>
     ${tel?`<div style="font-size:12px;color:#6b21a8;">📱 ${tel}</div>`:''}
@@ -1644,7 +1679,7 @@
   <div class="header-right">
     <div style="font-size:18px;font-weight:800;color:#7c3aed;">RESUMEN DE PEDIDO</div>
     <div style="margin-top:4px;">📅 Impreso: ${fecha}</div>
-    <div style="margin-top:4px;">🗓️ Fecha pedido: ${ped.fecha||'—'}</div>
+    <div style="margin-top:4px;">🗓️ Fecha pedido: ${ped._fecha || (ped.created_at ? new Date(ped.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : (ped.fecha||'—'))}</div>
     <div style="margin-top:4px;">${ped.campana||''} ${ped.numero_pedido?'· <strong>#'+ped.numero_pedido+'</strong>':''}</div>
     <div style="margin-top:8px;"><span class="badge-estado">Estado: ${ped.estado||'pendiente'}</span></div>
   </div>
@@ -1669,7 +1704,7 @@
 ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`:''}
 
 <div class="footer">
-  <div>Este resumen fue generado por el sistema de pedidos de <strong>Violetta Seller</strong></div>
+  <div>Este resumen fue generado por el sistema de pedidos de <strong>MiCatalogApp</strong></div>
   <div style="margin-top:4px;">Ante cualquier consulta comunicarse con tu vendedora • violettaseller.com.ar</div>
 </div>
 
@@ -1680,7 +1715,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </div>
 </body><!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
@@ -1753,7 +1788,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
       <td class="right bold">${d.recaudacion>0?'$'+d.recaudacion.toLocaleString('es-AR'):'—'}</td></tr>`).join('');
 
     const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Reporte ${vend} — Violetta Seller</title>
+<title>Reporte ${vend} — MiCatalogApp</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -1777,7 +1812,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </head><body>
 <div class="header">
   <div>
-    <div class="logo">♦ Violetta Seller<span>.</span></div>
+    <div class="logo">♦ MiCatalogApp<span>.</span></div>
     <div style="margin-top:8px;font-size:14px;font-weight:700;">Vendedora: ${vend}</div>
   </div>
   <div style="text-align:right;font-size:13px;color:#6b21a8;">
@@ -1800,7 +1835,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </table>
 
 <div class="footer">
-  Reporte generado por el sistema de pedidos de <strong>Violetta Seller</strong> · ${fecha}
+  Reporte generado por el sistema de pedidos de <strong>MiCatalogApp</strong> · ${fecha}
 </div>
 <br>
 <div style="text-align:center;">
@@ -1809,7 +1844,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </div>
 </body><!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
@@ -1867,7 +1902,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     document.getElementById('clientes-container').innerHTML=f.map(c=>{
       const ped=misPedidos.filter(p=>p.telefono===c.telefono||p.cliente_id===c.id).length;
       const tel=(c.telefono||'').replace(/\D/g,'');
-      const waMsg=encodeURIComponent(`Hola ${c.nombre}! 💜 Te escribimos de Violetta Seller.`);
+      const waMsg=encodeURIComponent(`Hola ${c.nombre}! 💜 Te escribimos de MiCatalogApp.`);
       return `<div class="pedido-card">
         <div class="pedido-card-header">
           <div>
@@ -2244,7 +2279,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     try{
       await sPatch('vendedoras',`id=eq.${currentUser.id}`,{cbus:JSON.stringify(cbus)});
       currentUser.cbus=JSON.stringify(cbus);
-      localStorage.setItem('violeta_logged_vendor',JSON.stringify(currentUser));
+      localStorage.setItem('micatalog_logged_vendor',JSON.stringify(currentUser));
       toast('✅ Datos de cobro guardados');
     }catch(e){toast('❌ '+e.message);}
   }
@@ -2255,7 +2290,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     try{
       await sPatch('vendedoras',`id=eq.${currentUser.id}`,{nombre,telefono});
       currentUser.nombre=nombre;currentUser.telefono=telefono;
-      localStorage.setItem('violeta_logged_vendor',JSON.stringify(currentUser));
+      localStorage.setItem('micatalog_logged_vendor',JSON.stringify(currentUser));
       document.getElementById('welcomeName').textContent=nombre;
       toast('✅ Perfil actualizado');
     }catch(e){toast('❌ '+e.message);}
@@ -2271,14 +2306,14 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     try{
       await sPatch('vendedoras',`id=eq.${currentUser.id}`,{password_hash:btoa(nueva)});
       currentUser.password_hash=btoa(nueva);
-      localStorage.setItem('violeta_logged_vendor',JSON.stringify(currentUser));
+      localStorage.setItem('micatalog_logged_vendor',JSON.stringify(currentUser));
       ['passActual','passNueva','passRepetir'].forEach(id=>document.getElementById(id).value='');
       toast('✅ Contraseña cambiada');
     }catch(e){toast('❌ '+e.message);}
   }
 
   // ===== INIT =====
-  const savedUser=localStorage.getItem('violeta_logged_vendor');
+  const savedUser=localStorage.getItem('micatalog_logged_vendor');
   if(savedUser){
     try{
       currentUser=JSON.parse(savedUser);
@@ -2286,7 +2321,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
       document.getElementById('appWrap').style.display='block';
       document.getElementById('welcomeName').textContent=currentUser.nombre||currentUser.username;
       cargarPedidos();agregarProducto();cargarPerfil();
-    }catch(e){localStorage.removeItem('violeta_logged_vendor');}
+    }catch(e){localStorage.removeItem('micatalog_logged_vendor');}
   } else {
     // Verificar si hay sesión de Google al volver del redirect
     checkGoogleSession();
@@ -2477,8 +2512,12 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     });
     const totalSel=sel.reduce((s,r)=>s+r.subtotal,0);
     box.style.display='block';
-    box.innerHTML=`<strong>${sel.length} ítem${sel.length!==1?'s':''} seleccionados</strong> · 
-      ${Object.keys(agrup).length} producto${Object.keys(agrup).length!==1?'s distintos':' distinto'} · 
+    const unidadesTotales = sel.reduce((s,r)=>s+( parseInt(r.qty)||1 ),0);
+    const codigosUnicos = new Set(sel.map(r=>r.codigo||r.producto)).size;
+    box.innerHTML=`
+      <strong>${sel.length}</strong> ítem${sel.length!==1?'s':''} de pedidos &nbsp;·&nbsp;
+      <strong>${unidadesTotales}</strong> unidades totales &nbsp;·&nbsp;
+      <strong>${codigosUnicos}</strong> código${codigosUnicos!==1?'s distintos':' distinto'} &nbsp;·&nbsp;
       Total: <strong style="color:#7c3aed;">$${totalSel.toLocaleString('es-AR')}</strong>`;
   }
 
@@ -2638,7 +2677,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </head><body>
 <div class="header">
   <div>
-    <div class="logo">♦ Violetta Seller<span>.</span></div>
+    <div class="logo">♦ MiCatalogApp<span>.</span></div>
     <div style="margin-top:6px;font-size:13px;font-weight:700;">Vendedora: ${vend}</div>
   </div>
   <div style="text-align:right;font-size:13px;color:#6b21a8;">
@@ -2668,7 +2707,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
   Total general seleccionado: $${totalGeneral.toLocaleString('es-AR')}
 </div>
 
-<div class="footer">Pedido generado por el sistema de pedidos de <strong>Violetta Seller</strong> · ${fecha}</div>
+<div class="footer">Pedido generado por el sistema de pedidos de <strong>MiCatalogApp</strong> · ${fecha}</div>
 <br>
 <div style="text-align:center;">
   <button onclick="window.print()" style="background:#7c3aed;color:white;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Imprimir / Guardar PDF</button>
@@ -2676,7 +2715,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </div>
 </body><!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
@@ -2766,7 +2805,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
       if(_pushPermitido){
         toast('🔔 Notificaciones activadas');
         // Notificación de prueba
-        new Notification('💜 Violetta Seller', {
+        new Notification('💜 MiCatalogApp', {
           body: 'Las notificaciones están activas. Te avisaremos cuando llegue un pedido nuevo.',
           icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Violet/3D/violet_3d.png'
         });
@@ -2846,7 +2885,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
     const blob = new Blob([arr], {type:'application/zip'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'violetta-seller-extension.zip';
+    a.download = 'micatalogapp-extension.zip';
     a.click();
     URL.revokeObjectURL(a.href);
     toast('✅ Descargando extensión...');
@@ -2855,7 +2894,7 @@ ${ped.pago==='Transferencia'?`<h2>💳 Datos para transferencia</h2>${cbusHtml}`
 </body>
 <!--
 ================================================================================
-  CHANGELOG — Violetta Seller
+  CHANGELOG — MiCatalogApp
   © 2026 Carlos Caceres — Proyecto Alpha v1.0.0
 ================================================================================
 
