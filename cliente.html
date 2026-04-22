@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <!-- Permitir zoom en el folleto pero controlado -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Violetta — Tu Pedido</title>
+  <title>MiCatalogApp — Tu Pedido</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -350,7 +350,7 @@
 <div class="screen active" id="scr-login">
   <div class="login-box">
     <div class="login-logo">💜</div>
-    <div class="login-brand">Violetta</div>
+    <div class="login-brand">MiCatalogApp</div>
     <div class="login-sub">Hacé tu pedido de campaña</div>
     <div class="login-field">
       <label>Tu DNI (sin puntos)</label>
@@ -358,6 +358,29 @@
     </div>
     <button class="btn-login" onclick="loginDNI()">Entrar 💜</button>
     <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ BIENVENIDA ═══════════════════ -->
+<div class="screen" id="scr-bienvenida" style="align-items:center;justify-content:center;background:linear-gradient(145deg,#4C1D95 0%,#7C3AED 50%,#EC4899 100%);padding:24px;">
+  <div style="background:white;border-radius:24px;padding:36px 28px;max-width:360px;width:100%;box-shadow:0 32px 64px rgba(0,0,0,.25);text-align:center;">
+    <div style="font-size:52px;margin-bottom:8px;">💜</div>
+    <div id="bienvenida-nombre" style="font-family:'Playfair Display',serif;font-size:24px;color:#7c3aed;margin-bottom:6px;"></div>
+    <div style="font-size:14px;color:#6b7280;margin-bottom:28px;">¿Qué querés hacer hoy?</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button onclick="iniciarPortal()"
+        style="padding:16px;background:linear-gradient(135deg,#7c3aed,#ec4899);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">
+        🛍️ Hacer un pedido
+      </button>
+      <button onclick="verMisPedidosDesdeBienvenida()"
+        style="padding:16px;background:#f5f0ff;color:#7c3aed;border:2px solid #e9d5ff;border-radius:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">
+        📋 Ver mis pedidos anteriores
+      </button>
+      <button onclick="cerrarSesion()"
+        style="padding:12px;background:none;color:#9ca3af;border:none;font-size:14px;font-family:inherit;cursor:pointer;">
+        No soy yo — cambiar de clienta
+      </button>
+    </div>
   </div>
 </div>
 
@@ -369,7 +392,7 @@
     <div class="header-brand">
       <span style="font-size:22px">💜</span>
       <div>
-        <div class="header-logo">Violetta</div>
+        <div class="header-logo">MiCatalogApp</div>
         <div class="header-vend" id="hdr-vend">Cargando...</div>
       </div>
     </div>
@@ -560,6 +583,8 @@
   async function loginDNI(){
     const dni = document.getElementById('dniInput').value.trim();
     if(!dni || dni.length < 6){ showLoginErr('Ingresá un DNI válido'); return; }
+    const btn = document.querySelector('.btn-login');
+    btn.disabled = true; btn.textContent = 'Buscando...';
     try{
       let rows = await sGet('clientes', `dni=eq.${dni}`);
       if(rows.length){
@@ -568,9 +593,33 @@
         const [nuevo] = await sPost('clientes', {dni, nombre:'Cliente '+dni, activo:true});
         currentCliente = nuevo;
       }
-      localStorage.setItem('violeta_cliente_v2', JSON.stringify(currentCliente));
-      await iniciarPortal();
-    }catch(e){ showLoginErr('Error de conexión: '+e.message); }
+      localStorage.setItem('micatalog_cliente_v2', JSON.stringify(currentCliente));
+
+      // Si el cliente ya existe y tiene nombre real, preguntarle qué quiere hacer
+      const tieneNombre = currentCliente.nombre && !currentCliente.nombre.startsWith('Cliente ');
+      if(tieneNombre){
+        mostrarBienvenida();
+      } else {
+        await iniciarPortal();
+      }
+    }catch(e){
+      showLoginErr('Error de conexión: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Entrar 💜';
+    }
+  }
+
+  async function verMisPedidosDesdeBienvenida(){
+    // Cargar portal en background para que el menú funcione, luego ir a pedidos
+    await iniciarPortal();
+    verMisPedidos();
+  }
+
+  function mostrarBienvenida(){
+    // Pantalla intermedia: bienvenida + elegir acción
+    const nombre = currentCliente.nombre.split(' ')[0]; // solo primer nombre
+    document.getElementById('bienvenida-nombre').textContent = '¡Hola, ' + nombre + '! 💜';
+    showScreen('bienvenida');
   }
   function showLoginErr(msg){ const e=document.getElementById('loginErr'); e.textContent=msg; e.style.display='block'; setTimeout(()=>e.style.display='none',4000); }
 
@@ -647,8 +696,16 @@
 
   // ── FOLLETO PDF ────────────────────────────────────────────
   // El PDF se sirve desde GitHub junto a los HTML
-  // Nombre esperado: folleto_c626.pdf (ajustar si cambia la campaña)
-  const PDF_URL = './folleto_c626.pdf';
+  // PDF del folleto — se carga según la campaña del parámetro ?c=
+  // El año se configura desde el admin en la sección Folletos (guardado en localStorage)
+  // Convención: folleto_c626.pdf, folleto_c726.pdf, folleto_c827.pdf, etc.
+  function getPdfUrl(campNum){
+    if(!campNum) return './folleto_c626.pdf';
+    const num = String(campNum).padStart(2,'0');
+    const año = localStorage.getItem('mca_año') || '26';
+    return `./folleto_c${num}${año}.pdf`;
+  }
+  const PDF_URL = getPdfUrl(campanaParam || '6');
 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1107,7 +1164,7 @@
             method:'PATCH', headers:{...H(),'Prefer':'return=representation'}, body:JSON.stringify(upd)
           });
           currentCliente = {...currentCliente, ...upd};
-          localStorage.setItem('violeta_cliente_v2', JSON.stringify(currentCliente));
+          localStorage.setItem('micatalog_cliente_v2', JSON.stringify(currentCliente));
         }catch(e){}
       }
 
@@ -1146,7 +1203,7 @@
       // Si es una clienta distinta a la actual, cargar sus datos
       if(cli.id !== currentCliente?.id){
         currentCliente = cli;
-        localStorage.setItem('violeta_cliente_v2', JSON.stringify(cli));
+        localStorage.setItem('micatalog_cliente_v2', JSON.stringify(cli));
       }
       // Autocompletar campos
       if(cli.nombre && !cli.nombre.startsWith('Cliente '))
@@ -1288,21 +1345,16 @@
 
   function cerrarSesion(){
     currentCliente = null;
-    localStorage.removeItem('violeta_cliente_v2');
+    localStorage.removeItem('micatalog_cliente_v2');
     carrito = {};
     document.getElementById('dniInput').value = '';
     showScreen('login');
   }
 
   // ── INIT ───────────────────────────────────────────────────
-  // Si ya está logueado, saltar login
-  const saved = localStorage.getItem('violeta_cliente_v2');
-  if(saved){
-    try{
-      currentCliente = JSON.parse(saved);
-      iniciarPortal();
-    }catch(e){ localStorage.removeItem('violeta_cliente_v2'); }
-  }
+  // Siempre pedir DNI al cargar — no conservar sesión entre recargas
+  // (el localStorage se usa solo para guardar datos durante la sesión actual)
+  localStorage.removeItem('micatalog_cliente_v2');
 
   document.addEventListener('keypress', e => {
     if(e.key === 'Enter' && document.getElementById('scr-login').classList.contains('active')) loginDNI();
