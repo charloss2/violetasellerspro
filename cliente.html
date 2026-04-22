@@ -557,9 +557,12 @@
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbmd3anhlZWJiemJxZWp5enNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxODc2NDgsImV4cCI6MjA5MTc2MzY0OH0.IjFNt8t1-YU4aUOgB-y8UFGAgHqL8qFNOwCIyxCvFj8';
 
   // Parámetros URL: ?v=username&c=6
+  // Acepta cualquier formato: c=6, c=Campaña 6, c=6/26, c=06/26
   const urlParams      = new URLSearchParams(window.location.search);
   const vendedoraParam = urlParams.get('v') || null;
-  const campanaParam   = urlParams.get('c') || null;
+  const _campRaw       = urlParams.get('c') || null;
+  // Extrae solo el primer número del parámetro c
+  const campanaParam   = _campRaw ? (String(_campRaw).match(/\d+/)?.[0] || null) : null;
 
   // Estado global
   let currentCliente      = null;
@@ -663,30 +666,43 @@
   }
 
   async function cargarCatalogo(numCamp){
-    const variantes = [
-      'campana=eq.' + encodeURIComponent('Campaña ' + numCamp + '/26'),
-      'campana=eq.' + encodeURIComponent(numCamp.padStart(2,'0') + '/26'),
-      'campana=eq.' + encodeURIComponent(numCamp + '/26'),
-    ];
     try{
       let prods = [];
-      for(const q of variantes){
-        // select=* explícito + limit alto para traer todos
-        prods = await sGet('productos', q + '&select=*&limit=1000&order=nombre.asc');
-        if(prods.length) break;
+
+      if(numCamp){
+        // Intentar variantes del formato de campaña en la BD
+        const variantes = [
+          'campana=eq.' + encodeURIComponent('Campaña ' + numCamp + '/26'),
+          'campana=eq.' + encodeURIComponent(numCamp + '/26'),
+          'campana=eq.' + encodeURIComponent(numCamp.toString().padStart(2,'0') + '/26'),
+          'campana=eq.' + encodeURIComponent(numCamp),
+        ];
+        for(const q of variantes){
+          prods = await sGet('productos', q + '&select=*&limit=1000&order=nombre.asc');
+          if(prods.length){ console.log('✅ match con:', q); break; }
+        }
       }
+
+      // Si ninguna variante matcheó, traer todos y tomar la campaña más reciente
+      if(!prods.length){
+        console.warn('⚠️ Ninguna variante matcheó — cargando todos los productos');
+        const todos = await sGet('productos', 'select=*&limit=2000&order=campana.desc,nombre.asc');
+        if(todos.length){
+          // Detectar la campaña más reciente disponible
+          const camps = [...new Set(todos.map(p=>p.campana).filter(Boolean))].sort().reverse();
+          const campActual = camps[0] || '';
+          console.log('Campañas disponibles:', camps, '→ usando:', campActual);
+          // Filtrar por la más reciente (o mostrar todos si no hay campaña)
+          prods = campActual ? todos.filter(p => p.campana === campActual) : todos;
+          toast(`ℹ️ Mostrando campaña: ${campActual || 'todas'}`);
+        }
+      }
+
       allProductosCli = prods;
-      document.getElementById('camp-label').textContent = 'Campaña ' + numCamp + '/26';
-
-      // Debug visible en pantalla
       const conPag = prods.filter(p => p.pagina).length;
-      console.log(`✅ Catálogo: ${prods.length} productos, ${conPag} con página`);
-      if(prods.length > 0){
-        console.log('Ejemplo producto[0]:', JSON.stringify(prods[0]));
-      }
-
-      // Mostrar debug en pantalla por 5 segundos
-      toast(`📦 ${prods.length} productos · ${conPag} con página`);
+      document.getElementById('camp-label').textContent = 'Campaña ' + numCamp + '/26';
+      toast(`📦 ${prods.length} productos cargados`);
+      console.log(`Catálogo: ${prods.length} prods, ${conPag} con página`);
 
     }catch(e){
       console.error('Error catálogo:', e);
@@ -701,7 +717,8 @@
   // Convención: folleto_c626.pdf, folleto_c726.pdf, folleto_c827.pdf, etc.
   function getPdfUrl(campNum){
     if(!campNum) return './folleto_c626.pdf';
-    const num = String(campNum).padStart(2,'0');
+    // NO usar padStart — el nombre del archivo es folleto_c626.pdf no folleto_c0626.pdf
+    const num = String(campNum).replace(/^0+/, ''); // quita ceros a la izquierda: "06" → "6"
     const año = localStorage.getItem('mca_año') || '26';
     return `./folleto_c${num}${año}.pdf`;
   }
