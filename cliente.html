@@ -194,6 +194,31 @@
 
     /* Sin PDF */
     .folleto-sinpdf { padding: 20px; text-align: center; color: rgba(255,255,255,.7); font-size: 13px; }
+    /* Botón toggle folleto — solo visible en mobile */
+    .btn-toggle-folleto {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 80;
+      width: 100%;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--accent), #9333ea);
+      color: white;
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      letter-spacing: .3px;
+    }
+    @media (max-width: 767px) {
+      .btn-toggle-folleto { display: block; }
+    }
+    @media (max-width: 767px) {
+      .folleto-panel.oculto { display: none !important; }
+      .productos-panel.expandido { height: auto; }
+    }
 
     /* ── MITAD INFERIOR: productos scrolleables ── */
     .productos-panel {
@@ -423,7 +448,12 @@
   <div class="split-layout">
 
     <!-- ── MITAD SUPERIOR: folleto ── -->
-    <div class="folleto-panel">
+    <!-- Botón toggle folleto — solo visible en mobile -->
+    <button class="btn-toggle-folleto" id="btn-toggle-folleto" onclick="toggleFolleto()">
+      📖 Ver folleto  ·  🛍️ Ver productos
+    </button>
+
+    <div class="folleto-panel" id="folleto-panel">
       <div class="folleto-topbar">
         <span class="folleto-campana" id="camp-label">Campaña —</span>
         <span class="folleto-pagina-label" id="pag-label">— / —</span>
@@ -458,7 +488,9 @@
     </div>
 
     <!-- ── MITAD INFERIOR/DERECHA: productos scrolleables ── -->
-    <div class="productos-panel">
+    </div><!-- /folleto-panel -->
+
+    <div class="productos-panel" id="productos-panel">
       <div class="productos-header">
         <span class="productos-titulo" id="prods-titulo">Productos</span>
         <span class="productos-count-label" id="prods-count"></span>
@@ -578,6 +610,38 @@
   function H(){ return {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}; }
   async function sGet(t,q=''){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${q}`,{headers:H()});if(!r.ok)throw new Error(await r.text());return r.json();}
   async function sPost(t,d){const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:{...H(),'Prefer':'return=representation'},body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
+
+  // ── TOGGLE FOLLETO (mobile) ───────────────────────────────
+  let _mostrando = 'folleto';
+  function toggleFolleto(){
+    const fp  = document.getElementById('folleto-panel');
+    const pp  = document.getElementById('productos-panel');
+    const btn = document.getElementById('btn-toggle-folleto');
+    if(_mostrando === 'folleto'){
+      fp.classList.add('oculto');
+      pp.classList.remove('oculto');
+      btn.innerHTML = '📖 Ver folleto';
+      btn.style.background = 'linear-gradient(135deg,#059669,#10b981)';
+      _mostrando = 'productos';
+    } else {
+      fp.classList.remove('oculto');
+      btn.innerHTML = '🛍️ Ver productos';
+      btn.style.background = 'linear-gradient(135deg,var(--accent),#9333ea)';
+      _mostrando = 'folleto';
+    }
+  }
+  function initToggleMobile(){
+    if(window.innerWidth < 768){
+      const fp  = document.getElementById('folleto-panel');
+      const btn = document.getElementById('btn-toggle-folleto');
+      if(fp && btn){
+        fp.classList.add('oculto');
+        btn.innerHTML = '📖 Ver folleto';
+        btn.style.background = 'linear-gradient(135deg,#059669,#10b981)';
+        _mostrando = 'productos';
+      }
+    }
+  }
 
   function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
   function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('scr-'+id).classList.add('active'); }
@@ -703,6 +767,12 @@
       document.getElementById('camp-label').textContent = 'Campaña ' + numCamp + '/26';
       toast(`📦 ${prods.length} productos cargados`);
       console.log(`Catálogo: ${prods.length} prods, ${conPag} con página`);
+      // Si ningún producto tiene página asignada, mostrar todos de entrada
+      // para que no quede vacío cuando el folleto renderiza página 1
+      if(prods.length > 0 && conPag === 0){
+        console.warn('Ningún producto tiene página asignada — mostrando todos');
+        renderProductosDePagina(null);
+      }
 
     }catch(e){
       console.error('Error catálogo:', e);
@@ -1005,13 +1075,16 @@
       lista.innerHTML = `
         <div class="sin-productos">
           <div class="sin-productos-emoji">🔍</div>
-          <p>No hay productos asignados<br>a esta página del folleto.</p>
-          ${totalCat > 0 ? `<button onclick="renderProductosDePagina(null)"
-            style="margin-top:12px;background:var(--violet);color:white;border:none;
-            border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;
-            cursor:pointer;font-family:inherit;">
-            Ver todos los productos (${totalCat})
-          </button>` : '<p style="color:#ef4444;font-size:12px;">Sin catálogo cargado</p>'}
+          <p style="font-size:13px;color:#6b7280;">Página ${numPag} — sin productos asignados</p>
+          ${totalCat > 0
+            ? `<button onclick="renderProductosDePagina(null)"
+                style="margin-top:14px;background:linear-gradient(135deg,var(--violet),var(--pink));
+                color:white;border:none;border-radius:12px;padding:12px 24px;
+                font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;">
+                🛍️ Ver todos los productos (${totalCat})
+              </button>`
+            : '<p style="color:#ef4444;font-size:12px;margin-top:8px;">Sin catálogo — verificá el link</p>'
+          }
         </div>`;
       return;
     }
@@ -1372,6 +1445,8 @@
   // Siempre pedir DNI al cargar — no conservar sesión entre recargas
   // (el localStorage se usa solo para guardar datos durante la sesión actual)
   localStorage.removeItem('micatalog_cliente_v2');
+
+  initToggleMobile();
 
   document.addEventListener('keypress', e => {
     if(e.key === 'Enter' && document.getElementById('scr-login').classList.contains('active')) loginDNI();

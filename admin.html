@@ -340,6 +340,7 @@
           <div class="btns-row">
             <select id="filtCampCat" onchange="renderCatalogo()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:12px;font-family:inherit;"><option value="">Todas las campañas</option></select>
             <button class="btn-sm primary" onclick="abrirMProd()">+ Agregar</button>
+            <button class="btn-sm danger" onclick="borrarCampana()" title="Borrar todos los productos de la campaña seleccionada">🗑️ Borrar campaña</button>
           </div>
         </div>
         <div id="cat-list"></div>
@@ -538,11 +539,31 @@
   <div class="modal">
     <h3>📦 <span id="mProdTit">Nuevo Producto</span></h3>
     <input type="hidden" id="mProdId">
-    <div class="field"><label>Nombre del producto</label><input type="text" id="mProdNom"></div>
-    <div class="field"><label>Precio ($)</label><input type="number" id="mProdPrecio"></div>
-    <div class="field"><label>Campaña</label><input type="text" id="mProdCamp" placeholder="Ej: Campaña 14"></div>
-    <div class="field"><label>Código (opcional)</label><input type="text" id="mProdCod"></div>
-    <div class="modal-btns"><button class="cancel" onclick="cerrarModal('modalProd')">Cancelar</button><button class="confirm" onclick="guardarProducto()">Guardar</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">
+      <div class="field" style="grid-column:1/-1"><label>Nombre del producto</label><input type="text" id="mProdNom" placeholder="Nombre completo"></div>
+      <div class="field"><label>Código SKU</label><input type="text" id="mProdCod" placeholder="101786"></div>
+      <div class="field"><label>Campaña</label><input type="text" id="mProdCamp" placeholder="6/26"></div>
+      <div class="field"><label>Precio ($)</label><input type="number" id="mProdPrecio" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Precio tachado ($)</label><input type="number" id="mProdPrecioTach" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Tipo de promo</label>
+        <select id="mProdPromoTipo">
+          <option value="normal">Normal (sin promo)</option>
+          <option value="lanzamiento">🚀 Lanzamiento</option>
+          <option value="oferta_especial">⚡ Oferta especial</option>
+          <option value="escala">📊 Escala (2+ unidades)</option>
+          <option value="con_compra">🎁 Con la compra</option>
+        </select>
+      </div>
+      <div class="field"><label>Precio promo x2 ($)</label><input type="number" id="mProdPrecio2" placeholder="0.00" step="0.01"></div>
+      <div class="field" style="grid-column:1/-1"><label>Detalle de promo</label><input type="text" id="mProdDetalle" placeholder="Ej: Llevá 2 al precio de 1.5"></div>
+      <div class="field"><label>Grupo promo</label><input type="text" id="mProdGrupo" placeholder="Ej: protect_escala"></div>
+      <div class="field"><label>Página folleto</label><input type="text" id="mProdPagina" placeholder="Ej: 10  o  10-13"></div>
+    </div>
+    <div id="mProdDupWarning" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#92400E;"></div>
+    <div class="modal-btns">
+      <button class="cancel" onclick="cerrarModal('modalProd')">Cancelar</button>
+      <button class="confirm" onclick="guardarProducto()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -785,12 +806,100 @@ function renderCatalogo(){
   f.forEach(p=>{h+=`<tr><td><strong>${p.nombre}</strong><br><span style="font-size:10px;color:var(--text3)">${p.codigo||''}</span></td><td style="font-size:11px">${p.campana||'—'}</td><td style="font-size:11px">${p.promo_tipo||'—'}</td><td style="font-weight:700;color:var(--accent)">${p.precio?'$'+Number(p.precio).toLocaleString('es-AR'):'—'}</td><td><div class="btns-row"><button class="btn-sm ghost" onclick="editProd('${p.id}')">✏️</button><button class="btn-sm danger" onclick="elimProd('${p.id}')">🗑️</button></div></td></tr>`;});
   document.getElementById('cat-list').innerHTML=h+'</tbody></table>';
 }
-function abrirMProd(){document.getElementById('mProdId').value='';document.getElementById('mProdTit').textContent='Nuevo Producto';['mProdNom','mProdPrecio','mProdCamp','mProdCod'].forEach(id=>document.getElementById(id).value='');document.getElementById('modalProd').classList.add('open');}
-function editProd(id){const p=allProds.find(x=>x.id===id);if(!p)return;document.getElementById('mProdId').value=p.id;document.getElementById('mProdTit').textContent='Editar Producto';document.getElementById('mProdNom').value=p.nombre;document.getElementById('mProdPrecio').value=p.precio||'';document.getElementById('mProdCamp').value=p.campana||'';document.getElementById('mProdCod').value=p.codigo||'';document.getElementById('modalProd').classList.add('open');}
+async function borrarCampana(){
+  const camp = document.getElementById('filtCampCat')?.value;
+  if(!camp){ toast('⚠️ Seleccioná una campaña del filtro primero','err'); return; }
+  const prods = allProds.filter(p=>p.campana===camp);
+  if(!prods.length){ toast('No hay productos en esa campaña','err'); return; }
+  if(!confirm(`⚠️ ATENCIÓN: Vas a BORRAR PERMANENTEMENTE los ${prods.length} productos de la campaña "${camp}".
+
+Esta acción NO SE PUEDE DESHACER.
+
+¿Estás seguro?`)) return;
+  if(!confirm(`Segunda confirmación — ¿BORRAR los ${prods.length} productos de "${camp}"?`)) return;
+  toast(`⏳ Borrando ${prods.length} productos...`);
+  let ok=0, err=0;
+  for(const p of prods){
+    try{ await sDel('productos',p.id); ok++; }
+    catch(e){ err++; console.error('Error borrando',p.id,e); }
+  }
+  toast(`✅ ${ok} productos borrados${err?' · ⚠️ '+err+' errores':''}`, err?'err':'ok');
+  await cargarTodo();
+}
+
+function abrirMProd(){
+  document.getElementById('mProdId').value='';
+  document.getElementById('mProdTit').textContent='Nuevo Producto';
+  ['mProdNom','mProdCod','mProdCamp','mProdPrecio','mProdPrecioTach',
+   'mProdPrecio2','mProdDetalle','mProdGrupo','mProdPagina'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const sel=document.getElementById('mProdPromoTipo'); if(sel) sel.value='normal';
+  document.getElementById('mProdDupWarning').style.display='none';
+  document.getElementById('modalProd').classList.add('open');
+}
+function editProd(id){
+  const p=allProds.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('mProdId').value=p.id;
+  document.getElementById('mProdTit').textContent='Editar Producto';
+  document.getElementById('mProdNom').value=p.nombre||'';
+  document.getElementById('mProdCod').value=p.codigo||'';
+  document.getElementById('mProdCamp').value=p.campana||'';
+  document.getElementById('mProdPrecio').value=p.precio||'';
+  document.getElementById('mProdPrecioTach').value=p.precio_tachado||'';
+  document.getElementById('mProdPrecio2').value=p.precio_promo_2||'';
+  document.getElementById('mProdDetalle').value=p.promo_detalle||'';
+  document.getElementById('mProdGrupo').value=p.promo_grupo||'';
+  document.getElementById('mProdPagina').value=p.pagina||'';
+  const sel=document.getElementById('mProdPromoTipo');
+  if(sel) sel.value=p.promo_tipo||'normal';
+  // Verificar si hay otro producto con mismo código y campaña
+  const dup=allProds.find(x=>x.id!==id && x.codigo===p.codigo && x.campana===p.campana);
+  const warn=document.getElementById('mProdDupWarning');
+  if(dup){ warn.style.display='block'; warn.textContent='⚠️ Atención: hay otro producto con el mismo código ('+p.codigo+') y campaña ('+p.campana+'). Guardar va a pisar el existente.'; }
+  else { warn.style.display='none'; }
+  document.getElementById('modalProd').classList.add('open');
+}
 async function guardarProducto(){
-  const id=document.getElementById('mProdId').value;const nombre=document.getElementById('mProdNom').value.trim();if(!nombre){toast('Ingresá el nombre','err');return;}
-  const data={nombre,precio:parseFloat(document.getElementById('mProdPrecio').value)||null,campana:document.getElementById('mProdCamp').value.trim(),codigo:document.getElementById('mProdCod').value.trim()};
-  try{id?await sPatch('productos',id,data):await sPost('productos',data);toast('✅ Guardado','ok');cerrarModal('modalProd');await cargarTodo();}catch(e){toast('❌ '+e.message,'err');}
+  const id     = document.getElementById('mProdId').value;
+  const nombre = document.getElementById('mProdNom').value.trim();
+  const codigo = document.getElementById('mProdCod').value.trim();
+  const campana= document.getElementById('mProdCamp').value.trim();
+  if(!nombre){ toast('⚠️ Ingresá el nombre del producto','err'); return; }
+  if(!campana){ toast('⚠️ Ingresá la campaña (ej: 6/26)','err'); return; }
+  // Verificar duplicado antes de guardar
+  if(!id){
+    const dup=allProds.find(p=>p.codigo===codigo && p.campana===campana);
+    if(dup && !confirm('Atencion: Ya existe codigo '+codigo+' en campana '+campana+'. Queres pisarlo?')) return;
+  }
+  const data={
+    nombre,
+    codigo,
+    campana,
+    precio:         parseFloat(document.getElementById('mProdPrecio').value)||null,
+    precio_tachado: parseFloat(document.getElementById('mProdPrecioTach').value)||null,
+    promo_tipo:     document.getElementById('mProdPromoTipo').value||'normal',
+    promo_detalle:  document.getElementById('mProdDetalle').value.trim()||null,
+    promo_grupo:    document.getElementById('mProdGrupo').value.trim()||null,
+    precio_promo_2: parseFloat(document.getElementById('mProdPrecio2').value)||null,
+    pagina:         document.getElementById('mProdPagina').value.trim()||null,
+  };
+  try{
+    id ? await sPatch('productos',id,data) : await sPost('productos',data);
+    toast('✅ Producto guardado','ok');
+    cerrarModal('modalProd');
+    await cargarTodo();
+  }catch(e){
+    // Error detallado
+    let msg = e.message||'Error desconocido';
+    if(msg.includes('duplicate') || msg.includes('unique')) msg='⚠️ Código duplicado: ya existe ese código en esa campaña';
+    else if(msg.includes('null value') || msg.includes('not-null')) msg='⚠️ Falta un campo obligatorio: '+msg;
+    else if(msg.includes('invalid input')) msg='⚠️ Formato inválido en algún campo numérico';
+    else if(msg.includes('JWT') || msg.includes('401')) msg='⚠️ Sin permisos — verificá la anon key';
+    toast('❌ '+msg,'err');
+    console.error('guardarProducto error:', e);
+  }
 }
 async function elimProd(id){if(!confirm('¿Eliminar producto?'))return;try{await sDel('productos',id);toast('🗑️ Eliminado');await cargarTodo();}catch(e){toast('❌ '+e.message,'err');}}
 
@@ -992,8 +1101,8 @@ function copiarSQL(){navigator.clipboard.writeText(document.getElementById('sqlC
       }));
       try{
         // Upsert: si existe (codigo+campana) actualiza, sino crea
-        // Requiere UNIQUE constraint en (codigo, campana) — ver upsert_constraint_v2.sql
-        const res = await fetch(`${SU}/rest/v1/productos`, {
+        // Upsert por (codigo, campana) — usa el constraint exacto de la BD
+        const res = await fetch(`${SU}/rest/v1/productos?on_conflict=codigo,campana`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1008,14 +1117,36 @@ function copiarSQL(){navigator.clipboard.writeText(document.getElementById('sqlC
         } else {
           err += batch.length;
           const errBody = await res.text();
+          let errParsed = {};
+          try{ errParsed = JSON.parse(errBody); }catch(ex){}
+          const code    = errParsed.code || '';
+          const message = errParsed.message || errBody;
           console.error('Error batch:', errBody);
-          // Si el error es por constraint faltante, avisar
-          if(errBody.includes('unique') || errBody.includes('duplicate')){
-            txt.textContent = '⚠️ Falta constraint único — ejecutá upsert_constraint_v2.sql en Supabase';
+          // Errores específicos con mensaje claro
+          if(code === '23505' || message.includes('duplicate') || message.includes('unique')){
+            txt.textContent = '⚠️ Código duplicado — falta constraint. Ejecutá upsert_constraint_v2.sql en Supabase';
+            toast('⚠️ Ejecutá upsert_constraint_v2.sql en Supabase para habilitar el upsert','err');
             break;
+          } else if(code === '23502' || message.includes('not-null') || message.includes('null value')){
+            txt.textContent = '⚠️ Falta un campo obligatorio en el Excel (código o nombre vacío en alguna fila)';
+            toast('⚠️ Revisá que todas las filas tengan código y nombre','err');
+            break;
+          } else if(code === 'PGRST204'){
+            txt.textContent = '⚠️ Columna no existe en la BD — ejecutá los SQL de migración';
+            toast('⚠️ Columna inexistente — revisá el schema de la BD','err');
+            break;
+          } else if(res.status === 401 || message.includes('JWT')){
+            txt.textContent = '⚠️ Sin permisos — verificá la anon key de Supabase';
+            break;
+          } else {
+            txt.textContent = `⚠️ Error en lote (HTTP ${res.status}): ${message.substring(0,120)}`;
           }
         }
-      }catch(e){ err += batch.length; console.error(e); }
+      }catch(e){
+        err += batch.length;
+        txt.textContent = '❌ Error de red: ' + e.message;
+        console.error(e);
+      }
       const pct = Math.round((i+batchSize)/validos.length*100);
       bar.style.width = Math.min(pct,100)+'%';
       txt.textContent = `Guardando... ${Math.min(i+batchSize,validos.length)} de ${validos.length}`;

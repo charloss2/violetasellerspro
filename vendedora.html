@@ -663,26 +663,42 @@
     if(!currentUser) return;
     const username = currentUser.username || '';
 
-    // Obtener campañas disponibles de los pedidos
-    const campsDisp = [...new Set(misPedidos.map(p=>p.campana).filter(Boolean))].sort().reverse();
-    // También del selector de proveedor
-    const provSel = document.getElementById('provFiltCamp');
-    if(provSel && provSel.value) campsDisp.unshift(provSel.value);
-    const campsUnicas = [...new Set(campsDisp)];
+    // Recopilar campañas de todas las fuentes disponibles
+    const fuentes = [
+      ...misPedidos.map(p=>p.campana),                          // de pedidos
+      document.getElementById('provFiltCamp')?.value,           // del selector proveedor
+      document.getElementById('filtroCampana')?.value,          // del filtro de pedidos
+    ].filter(Boolean);
 
-    // Extraer números de campaña (ej: "6/26" → "6")
-    const campNums = campsUnicas.map(c => c.replace(/^0/,'').split('/')[0]).filter(Boolean);
-    if(!campNums.length) campNums.push('6');
+    // Extraer número limpio de campaña (ej: "Campaña 6/26" → "6", "6/26" → "6")
+    const nums = fuentes
+      .map(s => String(s).match(/\d+/)?.[0])
+      .filter(Boolean)
+      .map(n => String(parseInt(n))); // normalizar "06" → "6"
+
+    // Deduplicar y ordenar descendente (la más reciente primero)
+    const campNums = [...new Set(nums)].sort((a,b)=>parseInt(b)-parseInt(a));
+
+    // Si no hay campañas disponibles, preguntar manualmente
+    if(!campNums.length){
+      const resp = prompt('¿Para qué campaña querés el link?\nIngresá el número (ej: 6, 7):', '6');
+      if(!resp) return;
+      campNums.push(String(parseInt(resp)));
+    }
+
     const lastCamp = campNums[0]; // la más reciente por defecto
 
-    // Si hay más de una campaña, preguntar cuál
+    // Si hay más de una campaña, mostrar selector
     let camp = lastCamp;
     if(campNums.length > 1){
       const opciones = campNums.map((n,i) => `${i+1}) Campaña ${n}/26`).join('\n');
-      const resp = prompt(`¿Para qué campaña querés el link?\n\n${opciones}\n\nEscribí el número de opción:`, '1');
-      if(resp === null) return; // canceló
+      const resp = prompt(
+        `¿Para qué campaña querés el link?\n\n${opciones}\n\nEscribí el número de opción (Enter = Campaña ${lastCamp}/26):`,
+        '1'
+      );
+      if(resp === null) return;
       const idx = parseInt(resp) - 1;
-      camp = campNums[Math.max(0, Math.min(idx, campNums.length-1))];
+      camp = campNums[Math.max(0, Math.min(isNaN(idx)?0:idx, campNums.length-1))];
     }
 
     const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
