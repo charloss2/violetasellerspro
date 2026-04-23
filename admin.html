@@ -1087,20 +1087,28 @@ function copiarSQL(){navigator.clipboard.writeText(document.getElementById('sqlC
     const batchSize = 50;
     let ok = 0, err = 0;
     for(let i=0; i<validos.length; i+=batchSize){
-      const batch = validos.slice(i, i+batchSize).map(p=>({
-        codigo:        p.codigo,
-        nombre:        p.nombre,
-        precio:        p.precio,
-        precio_tachado:p.precio_tachado||null,
-        promo_tipo:    p.promo_tipo,
-        promo_detalle: p.promo_detalle||'',
-        promo_grupo:   p.promo_grupo||'',
-        precio_promo_2:p.precio_promo_2||null,
-        pagina:        p.pagina||null,
-        campana:       p.campana
-      }));
       try{
         // Upsert: si existe (codigo+campana) actualiza, sino crea
+        // Deduplicar dentro del batch — si hay dos filas con mismo codigo+campana
+        // quedarse solo con la última (la más abajo en el Excel)
+        const batchMap = new Map();
+        validos.slice(i, i+batchSize).forEach(p => {
+          const key = (p.codigo||'') + '||' + (p.campana||'');
+          batchMap.set(key, {
+            codigo:        p.codigo,
+            nombre:        p.nombre,
+            precio:        p.precio,
+            precio_tachado:p.precio_tachado||null,
+            promo_tipo:    p.promo_tipo,
+            promo_detalle: p.promo_detalle||'',
+            promo_grupo:   p.promo_grupo||'',
+            precio_promo_2:p.precio_promo_2||null,
+            pagina:        p.pagina||null,
+            campana:       p.campana
+          });
+        });
+        const batch = [...batchMap.values()];
+
         // Upsert por (codigo, campana) — usa el constraint exacto de la BD
         const res = await fetch(`${SU}/rest/v1/productos?on_conflict=codigo,campana`, {
           method: 'POST',
