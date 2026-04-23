@@ -219,7 +219,7 @@
       }
       .folleto-panel.oculto { display: none !important; }
       .folleto-panel:not(.oculto) {
-        height: 55vh !important;
+        height: 47vh !important;
         flex: none !important;
       }
       .productos-panel {
@@ -227,6 +227,10 @@
         height: auto !important;
         min-height: 50vh;
       }
+      /* Espacio para el botón finalizar fixed */
+      .productos-lista { padding-bottom: 80px !important; }
+      /* Mini nav de páginas — visible solo cuando folleto está oculto */
+      .mini-nav-paginas { display: flex; }
     }
 
     /* ── MITAD INFERIOR: productos scrolleables ── */
@@ -320,6 +324,30 @@
     .sin-productos p { font-size: 13px; line-height: 1.6; }
 
     /* ── BARRA FINALIZAR ── */
+    /* Mini nav de páginas — solo mobile, solo cuando folleto oculto */
+    .mini-nav-paginas {
+      display: none; /* oculto por defecto y en desktop */
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .mini-nav-paginas.visible { display: flex; }
+    .mini-nav-btn {
+      background: var(--violet); color: white; border: none;
+      border-radius: 10px; padding: 8px 18px; font-size: 18px;
+      font-weight: 700; cursor: pointer; font-family: inherit;
+      flex-shrink: 0;
+    }
+    .mini-nav-btn:disabled { opacity: .3; cursor: default; }
+    .mini-nav-label {
+      font-size: 13px; font-weight: 700; color: var(--violet);
+      text-align: center; flex: 1;
+    }
+
     .finalizar-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: white; border-top: 1px solid var(--border);
@@ -497,6 +525,15 @@
 
     <!-- ── MITAD INFERIOR/DERECHA: productos scrolleables ── -->
     <div class="productos-panel" id="productos-panel">
+      <!-- Mini nav de páginas — solo mobile, visible cuando folleto está oculto -->
+      <div class="mini-nav-paginas" id="mini-nav-paginas">
+        <button class="mini-nav-btn" id="mini-btn-prev"
+          onclick="cambiarPagina(-1)" disabled>←</button>
+        <span class="mini-nav-label" id="mini-pag-label">Página — / —</span>
+        <button class="mini-nav-btn" id="mini-btn-next"
+          onclick="cambiarPagina(1)">→</button>
+      </div>
+
       <div class="productos-header">
         <span class="productos-titulo" id="prods-titulo">Productos</span>
         <span class="productos-count-label" id="prods-count"></span>
@@ -620,30 +657,55 @@
   // ── TOGGLE FOLLETO (mobile) ───────────────────────────────
   let _mostrando = 'productos';
   function toggleFolleto(){
-    const fp  = document.getElementById('folleto-panel');
-    const btn = document.getElementById('btn-toggle-folleto');
+    const fp   = document.getElementById('folleto-panel');
+    const btn  = document.getElementById('btn-toggle-folleto');
+    const mnav = document.getElementById('mini-nav-paginas');
     if(!fp || !btn) return;
     if(_mostrando === 'productos'){
+      // Mostrar folleto — ocultar mini nav
       fp.classList.remove('oculto');
-      btn.textContent = '🛍️'; // ícono: tocá para ir a productos
+      btn.textContent = '🛍️';
       btn.title = 'Ver productos';
+      if(mnav) mnav.classList.remove('visible');
       _mostrando = 'folleto';
       if(pdfDoc && paginaActual) renderPagina(paginaActual);
     } else {
+      // Ocultar folleto — mostrar mini nav
       fp.classList.add('oculto');
-      btn.textContent = '📖'; // ícono: tocá para ver el folleto
+      btn.textContent = '📖';
       btn.title = 'Ver folleto';
+      if(mnav) mnav.classList.add('visible');
       _mostrando = 'productos';
+      sincronizarMiniNav();
+    }
+  }
+  function sincronizarMiniNav(){
+    // Sincronizar el mini nav con el estado del folleto principal
+    const mp = document.getElementById('mini-pag-label');
+    const mb = document.getElementById('mini-btn-prev');
+    const mb2= document.getElementById('mini-btn-next');
+    if(!mp) return;
+    if(totalPaginas > 0 && paginaActual){
+      mp.textContent = 'Página ' + paginaActual + ' / ' + totalPaginas;
+      if(mb)  mb.disabled  = paginaActual <= 1;
+      if(mb2) mb2.disabled = paginaActual >= totalPaginas;
+    } else {
+      mp.textContent = 'Sin folleto cargado';
+      if(mb)  mb.disabled  = true;
+      if(mb2) mb2.disabled = true;
     }
   }
   function initToggleMobile(){
     if(window.innerWidth < 768){
       const fp  = document.getElementById('folleto-panel');
       const btn = document.getElementById('btn-toggle-folleto');
+      const mnav= document.getElementById('mini-nav-paginas');
       if(fp && btn){
         fp.classList.add('oculto');
         btn.textContent = '📖';
         btn.title = 'Ver folleto';
+        // Arrancar con mini nav visible (folleto oculto)
+        if(mnav) mnav.classList.add('visible');
         _mostrando = 'productos';
       }
     }
@@ -828,6 +890,8 @@
     document.getElementById('pag-label').textContent = `${num} / ${totalPaginas}`;
     document.getElementById('btn-prev').disabled = num <= 1;
     document.getElementById('btn-next').disabled = num >= totalPaginas;
+    // Sincronizar mini nav (mobile)
+    sincronizarMiniNav();
     document.querySelectorAll('.folleto-dot').forEach((d,i) => d.classList.toggle('active', i+1===num));
 
     const page    = await pdfDoc.getPage(num);
