@@ -659,7 +659,7 @@
     location.reload();
   }
 
-  function copiarMiLink(){
+  async function copiarMiLink(){
     if(!currentUser) return;
     const username = currentUser.username || '';
 
@@ -669,6 +669,12 @@
       document.getElementById('provFiltCamp')?.value,           // del selector proveedor
       document.getElementById('filtroCampana')?.value,          // del filtro de pedidos
     ].filter(Boolean);
+
+    // Si hay pocas fuentes, buscar también en el catálogo de productos (fuente más confiable)
+    try{
+      const prods = await sGet('productos', 'select=campana&limit=500&order=campana.desc');
+      prods.forEach(p => { if(p.campana) fuentes.push(p.campana); });
+    }catch(e){ console.warn('No se pudo consultar campañas de productos:', e.message); }
 
     // Extraer número limpio de campaña (ej: "Campaña 6/26" → "6", "6/26" → "6")
     const nums = fuentes
