@@ -197,27 +197,43 @@
     /* Botón toggle folleto — solo visible en mobile */
     .btn-toggle-folleto {
       display: none;
-      position: sticky;
-      top: 0;
-      z-index: 80;
-      width: 100%;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, var(--accent), #9333ea);
-      color: white;
-      border: none;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      letter-spacing: .3px;
     }
     @media (max-width: 767px) {
-      .btn-toggle-folleto { display: block; }
-    }
-    @media (max-width: 767px) {
-      .folleto-panel.oculto { display: none !important; }
-      .productos-panel.expandido { height: auto; }
+      .btn-toggle-folleto {
+        display: block;
+        width: 100%;
+        padding: 13px 16px;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white;
+        border: none;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        letter-spacing: .3px;
+        flex-shrink: 0;
+      }
+      /* En mobile el split-layout es columna */
+      .split-layout {
+        flex-direction: column !important;
+        height: auto !important;
+      }
+      /* Folleto oculto en mobile */
+      .folleto-panel.oculto {
+        display: none !important;
+      }
+      /* Folleto visible en mobile — altura fija razonable */
+      .folleto-panel:not(.oculto) {
+        height: 55vh !important;
+        flex: none !important;
+      }
+      /* Productos siempre ocupan el espacio disponible */
+      .productos-panel {
+        flex: 1 !important;
+        height: auto !important;
+        min-height: 50vh;
+      }
     }
 
     /* ── MITAD INFERIOR: productos scrolleables ── */
@@ -445,14 +461,14 @@
     </div>
   </div>
 
+  <!-- Botón toggle folleto — solo visible en mobile, fuera del split-layout -->
+  <button class="btn-toggle-folleto" id="btn-toggle-folleto" onclick="toggleFolleto()">
+    🛍️ Ver productos
+  </button>
+
   <div class="split-layout">
 
     <!-- ── MITAD SUPERIOR: folleto ── -->
-    <!-- Botón toggle folleto — solo visible en mobile -->
-    <button class="btn-toggle-folleto" id="btn-toggle-folleto" onclick="toggleFolleto()">
-      📖 Ver folleto  ·  🛍️ Ver productos
-    </button>
-
     <div class="folleto-panel" id="folleto-panel">
       <div class="folleto-topbar">
         <span class="folleto-campana" id="camp-label">Campaña —</span>
@@ -488,8 +504,6 @@
     </div>
 
     <!-- ── MITAD INFERIOR/DERECHA: productos scrolleables ── -->
-    </div><!-- /folleto-panel -->
-
     <div class="productos-panel" id="productos-panel">
       <div class="productos-header">
         <span class="productos-titulo" id="prods-titulo">Productos</span>
@@ -612,33 +626,36 @@
   async function sPost(t,d){const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:{...H(),'Prefer':'return=representation'},body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
 
   // ── TOGGLE FOLLETO (mobile) ───────────────────────────────
-  let _mostrando = 'folleto';
+  let _mostrando = 'productos'; // arranca mostrando productos en mobile
   function toggleFolleto(){
     const fp  = document.getElementById('folleto-panel');
-    const pp  = document.getElementById('productos-panel');
     const btn = document.getElementById('btn-toggle-folleto');
-    if(_mostrando === 'folleto'){
-      fp.classList.add('oculto');
-      pp.classList.remove('oculto');
-      btn.innerHTML = '📖 Ver folleto';
-      btn.style.background = 'linear-gradient(135deg,#059669,#10b981)';
-      _mostrando = 'productos';
-    } else {
+    if(!fp || !btn) return;
+    if(_mostrando === 'productos'){
+      // Mostrar folleto
       fp.classList.remove('oculto');
-      btn.innerHTML = '🛍️ Ver productos';
+      btn.textContent = '🛍️ Ver productos';
       btn.style.background = 'linear-gradient(135deg,var(--accent),#9333ea)';
       _mostrando = 'folleto';
+      // Renderizar la página actual por si cambió el tamaño
+      if(pdfDoc && paginaActual) renderPagina(paginaActual);
+    } else {
+      // Ocultar folleto, mostrar productos
+      fp.classList.add('oculto');
+      btn.textContent = '📖 Ver folleto';
+      btn.style.background = 'linear-gradient(135deg,#059669,#10b981)';
+      _mostrando = 'productos';
     }
   }
   function initToggleMobile(){
+    // Solo aplica en mobile — en desktop el split-layout ya muestra ambos
     if(window.innerWidth < 768){
       const fp  = document.getElementById('folleto-panel');
       const btn = document.getElementById('btn-toggle-folleto');
       if(fp && btn){
-        fp.classList.add('oculto');
-        btn.innerHTML = '📖 Ver folleto';
+        fp.classList.add('oculto'); // arrancar con folleto oculto
+        btn.textContent = '📖 Ver folleto';
         btn.style.background = 'linear-gradient(135deg,#059669,#10b981)';
-        _mostrando = 'productos';
       }
     }
   }
