@@ -661,56 +661,81 @@
 
   async function copiarMiLink(){
     if(!currentUser) return;
-    const username = currentUser.username || '';
+    const username = currentUser.nombre || currentUser.username || '';
 
-    // Recopilar campañas de todas las fuentes disponibles
+    // Recopilar campañas de todas las fuentes
     const fuentes = [
-      ...misPedidos.map(p=>p.campana),                          // de pedidos
-      document.getElementById('provFiltCamp')?.value,           // del selector proveedor
-      document.getElementById('filtroCampana')?.value,          // del filtro de pedidos
+      ...misPedidos.map(p=>p.campana),
+      document.getElementById('provFiltCamp')?.value,
+      document.getElementById('filtroCampana')?.value,
     ].filter(Boolean);
 
-    // Si hay pocas fuentes, buscar también en el catálogo de productos (fuente más confiable)
+    // Buscar en el catálogo (fuente más confiable — tiene la campaña nueva aunque no haya pedidos)
     try{
-      const prods = await sGet('productos', 'select=campana&limit=500&order=campana.desc');
-      prods.forEach(p => { if(p.campana) fuentes.push(p.campana); });
-    }catch(e){ console.warn('No se pudo consultar campañas de productos:', e.message); }
+      const prods = await sGet('productos','select=campana&limit=500&order=campana.desc');
+      prods.forEach(p=>{ if(p.campana) fuentes.push(p.campana); });
+    }catch(e){}
 
-    // Extraer número limpio de campaña (ej: "Campaña 6/26" → "6", "6/26" → "6")
-    const nums = fuentes
-      .map(s => String(s).match(/\d+/)?.[0])
-      .filter(Boolean)
-      .map(n => String(parseInt(n))); // normalizar "06" → "6"
+    // Extraer números, deduplicar, ordenar desc — tomar solo las 2 más recientes
+    const campNums = [...new Set(
+      fuentes.map(s=>String(s).match(/\d+/)?.[0]).filter(Boolean).map(n=>String(parseInt(n)))
+    )].sort((a,b)=>parseInt(b)-parseInt(a)).slice(0,2);
 
-    // Deduplicar y ordenar descendente (la más reciente primero)
-    const campNums = [...new Set(nums)].sort((a,b)=>parseInt(b)-parseInt(a));
+    if(!campNums.length) campNums.push('6');
 
-    // Si no hay campañas disponibles, preguntar manualmente
-    if(!campNums.length){
-      const resp = prompt('¿Para qué campaña querés el link?\nIngresá el número (ej: 6, 7):', '6');
-      if(!resp) return;
-      campNums.push(String(parseInt(resp)));
+    // Si solo hay una campaña, ir directo al QR sin pedir elección
+    if(campNums.length === 1){
+      mostrarModalLink(username, campNums[0]); return;
     }
 
-    const lastCamp = campNums[0]; // la más reciente por defecto
+    // ── Modal selector de campaña ─────────────────────────────
+    const ya = document.getElementById('miLinkModal');
+    if(ya) ya.remove();
 
-    // Si hay más de una campaña, mostrar selector
-    let camp = lastCamp;
-    if(campNums.length > 1){
-      const opciones = campNums.map((n,i) => `${i+1}) Campaña ${n}/26`).join('\n');
-      const resp = prompt(
-        `¿Para qué campaña querés el link?\n\n${opciones}\n\nEscribí el número de opción (Enter = Campaña ${lastCamp}/26):`,
-        '1'
-      );
-      if(resp === null) return;
-      const idx = parseInt(resp) - 1;
-      camp = campNums[Math.max(0, Math.min(isNaN(idx)?0:idx, campNums.length-1))];
-    }
+    const modal = document.createElement('div');
+    modal.id = 'miLinkModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0;';
 
+    modal.innerHTML = `
+      <div style="background:white;border-radius:24px 24px 0 0;padding:28px 24px 36px;
+        width:100%;max-width:460px;box-shadow:0 -8px 40px rgba(0,0,0,.3);text-align:center;
+        animation:slideUp .25s ease;">
+        <div style="width:44px;height:5px;background:#e5e7eb;border-radius:999px;margin:0 auto 20px;"></div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;color:#7c3aed;margin-bottom:6px;">
+          🔗 Tu link de pedidos
+        </div>
+        <div style="font-size:14px;color:#6b7280;margin-bottom:24px;">
+          ¿Para qué campaña querés generar el link y el QR?
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+          ${campNums.map((n, i) => `
+            <button onclick="document.getElementById('miLinkModal').remove();mostrarModalLink('${username}','${n}')"
+              style="width:100%;padding:18px 20px;border-radius:16px;border:none;cursor:pointer;
+                font-family:inherit;font-size:16px;font-weight:700;transition:all .15s;
+                ${i===0
+                  ? 'background:linear-gradient(135deg,#7c3aed,#ec4899);color:white;box-shadow:0 4px 20px rgba(124,58,237,.35);'
+                  : 'background:#f5f0ff;color:#7c3aed;border:2px solid #e9d5ff;'}">
+              Campaña ${n}/26
+              ${i===0 ? '<span style="display:block;font-size:12px;font-weight:400;opacity:.85;margin-top:3px;">⭐ Más reciente</span>' : ''}
+            </button>
+          `).join('')}
+        </div>
+
+        <button onclick="document.getElementById('miLinkModal').remove()"
+          style="width:100%;background:#f3f4f6;color:#6b7280;border:none;border-radius:12px;
+          padding:12px;font-size:14px;cursor:pointer;font-family:inherit;">
+          Cancelar
+        </button>
+      </div>`;
+
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+
+  function mostrarModalLink(username, camp){
     const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
-    const link = `${base}cliente.html?v=${encodeURIComponent(username)}&c=${encodeURIComponent(camp)}`;
-
-    // QR via API gratuita (no requiere key)
+    const link = `${base}cliente.html?v=${encodeURIComponent(currentUser?.username||username)}&c=${encodeURIComponent(camp)}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
 
     const ya = document.getElementById('miLinkModal');
@@ -718,53 +743,64 @@
 
     const modal = document.createElement('div');
     modal.id = 'miLinkModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+
     modal.innerHTML = `
-      <div style="background:white;border-radius:24px;padding:28px 24px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.4);text-align:center;">
+      <div style="background:white;border-radius:24px 24px 0 0;padding:28px 24px 36px;
+        width:100%;max-width:460px;box-shadow:0 -8px 40px rgba(0,0,0,.3);text-align:center;
+        animation:slideUp .25s ease;">
+        <div style="width:44px;height:5px;background:#e5e7eb;border-radius:999px;margin:0 auto 20px;"></div>
 
         <div style="font-family:'Playfair Display',serif;font-size:20px;color:#7c3aed;margin-bottom:4px;">
           💜 Tu link de pedidos
         </div>
         <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">
-          ${currentUser.nombre || username} · Campaña ${camp}/26
+          ${username} · <strong style="color:#7c3aed;">Campaña ${camp}/26</strong>
         </div>
 
-        <!-- QR grande -->
         <div style="background:#f5f0ff;border-radius:16px;padding:16px;margin-bottom:16px;display:inline-block;">
           <img src="${qrUrl}" width="200" height="200"
-            style="display:block;border-radius:8px;"
-            alt="QR de tu link de pedidos">
+            style="display:block;border-radius:8px;" alt="QR">
         </div>
 
-        <div style="font-size:11px;color:#7c3aed;margin-bottom:16px;line-height:1.4;">
-          📱 Tus clientas pueden escanearlo con la cámara del celular<br>
-          para abrir el catálogo directo con tu nombre
+        <div style="font-size:12px;color:#7c3aed;margin-bottom:16px;line-height:1.5;">
+          📱 Tus clientas escanean el QR con la cámara del celular<br>
+          y abren el catálogo directo con tu nombre
         </div>
 
-        <!-- Link en texto -->
-        <div style="background:#f5f0ff;border:2px solid #e9d5ff;border-radius:10px;padding:10px 12px;margin-bottom:14px;word-break:break-all;font-size:11px;color:#4c1d95;font-family:monospace;text-align:left;">
+        <div style="background:#f5f0ff;border:2px solid #e9d5ff;border-radius:10px;padding:10px 12px;
+          margin-bottom:14px;word-break:break-all;font-size:11px;color:#4c1d95;
+          font-family:monospace;text-align:left;">
           ${link}
         </div>
 
-        <!-- Botones -->
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <button id="btnCopiarLink"
             onclick="navigator.clipboard.writeText('${link}').then(()=>{this.innerHTML='✅ ¡Copiado!';setTimeout(()=>this.innerHTML='📋 Copiar link',2000)})"
-            style="flex:1;background:#7c3aed;color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+            style="flex:1;background:#7c3aed;color:white;border:none;border-radius:12px;
+            padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
             📋 Copiar link
           </button>
-          <button onclick="descargarQR('${qrUrl}','qr_${username}_c${camp}.png')"
-            style="flex:1;background:#059669;color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+          <button onclick="descargarQR('${qrUrl}','qr_c${camp}.png')"
+            style="flex:1;background:#059669;color:white;border:none;border-radius:12px;
+            padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
             ⬇️ Guardar QR
           </button>
         </div>
+
+        <button onclick="document.getElementById('miLinkModal').remove();copiarMiLink()"
+          style="width:100%;background:#f5f0ff;color:#7c3aed;border:2px solid #e9d5ff;
+          border-radius:12px;padding:10px;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:8px;">
+          ← Cambiar campaña
+        </button>
         <button onclick="document.getElementById('miLinkModal').remove()"
-          style="width:100%;background:#f3f4f6;color:#374151;border:none;border-radius:10px;padding:10px;font-size:13px;cursor:pointer;font-family:inherit;">
+          style="width:100%;background:#f3f4f6;color:#6b7280;border:none;
+          border-radius:12px;padding:10px;font-size:13px;cursor:pointer;font-family:inherit;">
           Cerrar
         </button>
-      </div>
-    `;
-    modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+      </div>`;
+
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
     document.body.appendChild(modal);
   }
 
